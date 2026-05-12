@@ -285,6 +285,16 @@
     0%, 100% { transform: translate(-50%, -50%) translateY(-40px) scale(1.12); }
     50%      { transform: translate(-50%, -50%) translateY(-55px) scale(1.12); }
   }
+  /* Shinies float + sway + breathe — adds "alive" feel without changing the sprite */
+  .scene.shiny-pull.revealed.settled .card {
+    animation: cardFloatShiny 4.5s ease-in-out infinite;
+  }
+  @keyframes cardFloatShiny {
+    0%, 100% { transform: translate(-50%, -50%) translateY(-40px) scale(1.12) rotate(-1.8deg); }
+    25%      { transform: translate(-50%, -50%) translateY(-50px) scale(1.135) rotate(0deg); }
+    50%      { transform: translate(-50%, -50%) translateY(-58px) scale(1.12) rotate(1.8deg); }
+    75%      { transform: translate(-50%, -50%) translateY(-50px) scale(1.135) rotate(0deg); }
+  }
 
   .card-face {
     position: absolute;
@@ -523,9 +533,36 @@
     100% { background-position: 200% 200%; opacity: 0; }
   }
 
-  /* SHINY variant — rainbow holo full overlay + name color shift */
+  /* SHINY variant — rainbow holo full overlay + name color shift + RGB border */
   .card-front.shiny {
     background: linear-gradient(180deg, #fff 0%, #f0f0ff 100%);
+    animation: rgbBorder 3.5s linear infinite;
+  }
+  @keyframes rgbBorder {
+    0%   {
+      border-color: #ff00ff;
+      box-shadow: 0 0 0 3px #ff00ff inset, 0 20px 40px rgba(0,0,0,.5), 0 0 50px rgba(255,0,255,.6);
+    }
+    20%  {
+      border-color: #ffaa00;
+      box-shadow: 0 0 0 3px #ffaa00 inset, 0 20px 40px rgba(0,0,0,.5), 0 0 50px rgba(255,170,0,.6);
+    }
+    40%  {
+      border-color: #ffff00;
+      box-shadow: 0 0 0 3px #ffff00 inset, 0 20px 40px rgba(0,0,0,.5), 0 0 50px rgba(255,255,0,.55);
+    }
+    60%  {
+      border-color: #00ff88;
+      box-shadow: 0 0 0 3px #00ff88 inset, 0 20px 40px rgba(0,0,0,.5), 0 0 50px rgba(0,255,136,.55);
+    }
+    80%  {
+      border-color: #00ddff;
+      box-shadow: 0 0 0 3px #00ddff inset, 0 20px 40px rgba(0,0,0,.5), 0 0 50px rgba(0,221,255,.6);
+    }
+    100% {
+      border-color: #ff00ff;
+      box-shadow: 0 0 0 3px #ff00ff inset, 0 20px 40px rgba(0,0,0,.5), 0 0 50px rgba(255,0,255,.6);
+    }
   }
   .card-front.shiny::after {
     content: '';
@@ -545,6 +582,26 @@
   @keyframes rainbowSpin {
     0%   { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+  }
+
+  /* Continuous holographic light sweep — simulates overhead-light reflection
+     on a real holo card. Sweeps a bright diagonal band across the surface. */
+  .scene.revealed .card-front.shiny::before {
+    opacity: 1;
+    background: linear-gradient(115deg,
+      transparent 30%,
+      rgba(255, 255, 255, .55) 47%,
+      rgba(255, 220, 255, .6) 50%,
+      rgba(200, 240, 255, .55) 53%,
+      transparent 70%);
+    background-size: 250% 250%;
+    background-position: -150% 0%;
+    animation: holoSweep 2.6s linear infinite !important;
+    mix-blend-mode: overlay;
+  }
+  @keyframes holoSweep {
+    0%   { background-position: -150% 0%; }
+    100% { background-position:  150% 0%; }
   }
   .card-front.shiny .name {
     background: linear-gradient(90deg, #ff00aa, #ffaa00, #00ddff, #aa00ff);
