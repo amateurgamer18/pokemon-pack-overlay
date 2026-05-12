@@ -1000,28 +1000,25 @@
     }
   }
 
-  /* Screen-darken — the rest of the screen dims to spotlight legendary cards */
+  /* Screen-darken — brief spotlight during the build-up only, fades out after reveal */
   .screen-darken {
     position: fixed;
     inset: 0;
     background: radial-gradient(circle at center,
       transparent 0%,
-      rgba(0, 0, 0, .35) 50%,
-      rgba(0, 0, 0, .75) 100%);
+      rgba(0, 0, 0, .15) 50%,
+      rgba(0, 0, 0, .45) 100%);
     opacity: 0;
     pointer-events: none;
     z-index: 80;
-    transition: opacity 1.2s ease-in-out;
+    transition: opacity 1s ease-in-out;
   }
-  .scene.legendary-pull.vibrating .screen-darken { opacity: .7; }
-  .scene.legendary-pull.flashing  .screen-darken { opacity: .85; }
-  .scene.legendary-pull.revealed  .screen-darken {
-    opacity: 1;
-    background: radial-gradient(circle at center,
-      transparent 0%,
-      rgba(0, 0, 0, .3) 45%,
-      rgba(0, 0, 0, .8) 100%);
-  }
+  /* Subtle darken during the tension build-up only */
+  .scene.legendary-pull.vibrating .screen-darken { opacity: .45; }
+  .scene.legendary-pull.flashing  .screen-darken { opacity: .55; }
+  /* On reveal, fade the dim back out — card is doing the visual work now */
+  .scene.legendary-pull.revealed  .screen-darken { opacity: .2; }
+  .scene.legendary-pull.settled   .screen-darken { opacity: 0; }
 
   /* Legendary flash — gold radial burst replacing the white/rainbow */
   .scene.legendary-pull.flashing .flash-overlay {
