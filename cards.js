@@ -164,14 +164,14 @@ const KANTO_CARDS = [
   { id: 141, name: 'Kabutops',   type: 'Rock',     hp: 90 },
   { id: 142, name: 'Aerodactyl', type: 'Rock',     hp: 100 },
   { id: 143, name: 'Snorlax',    type: 'Normal',   hp: 150 },
-  { id: 144, name: 'Articuno',   type: 'Ice',      hp: 120 },
-  { id: 145, name: 'Zapdos',     type: 'Electric', hp: 120 },
-  { id: 146, name: 'Moltres',    type: 'Fire',     hp: 120 },
+  { id: 144, name: 'Articuno',   type: 'Ice',      hp: 120, legendary: true },
+  { id: 145, name: 'Zapdos',     type: 'Electric', hp: 120, legendary: true },
+  { id: 146, name: 'Moltres',    type: 'Fire',     hp: 120, legendary: true },
   { id: 147, name: 'Dratini',    type: 'Dragon',   hp: 50 },
   { id: 148, name: 'Dragonair',  type: 'Dragon',   hp: 80 },
   { id: 149, name: 'Dragonite',  type: 'Dragon',   hp: 130 },
-  { id: 150, name: 'Mewtwo',     type: 'Psychic',  hp: 150 },
-  { id: 151, name: 'Mew',        type: 'Psychic',  hp: 100 },
+  { id: 150, name: 'Mewtwo',     type: 'Psychic',  hp: 150, legendary: true },
+  { id: 151, name: 'Mew',        type: 'Psychic',  hp: 100, legendary: true },
 ];
 
 // Returns { standard, shiny } URLs for a card id

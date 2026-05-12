@@ -26,6 +26,15 @@ window.STREAM_CONFIG = {
   // ---- Shiny odds — 1 in N ----
   shinyOdds: 100,
 
+  // ---- Legendary rarity weight (vs regular cards = 1.0) ----
+  // The 5 Gen 1 legendaries (Articuno, Zapdos, Moltres, Mewtwo, Mew) are
+  // weighted lower so they feel like a chase pull. No-dupes means viewers
+  // WILL still get all 5 eventually — just less often early on.
+  //   0.1   = 10× rarer than regulars (recommended starting point)
+  //   0.05  = 20× rarer
+  //   0.02  = 50× rarer (shock-value moments)
+  legendaryWeight: 0.1,
+
   // ---- Firebase Realtime Database ----
   // Required if you want viewers to see their own dex on pokedex.html.
   // Leave blank to run with localStorage-only (overlay still works,

@@ -295,6 +295,16 @@
     50%      { transform: translate(-50%, -50%) translateY(-58px) scale(1.12) rotate(1.8deg); }
     75%      { transform: translate(-50%, -50%) translateY(-50px) scale(1.135) rotate(0deg); }
   }
+  /* Legendaries float bigger, rotate slower, larger scale — feels heavier and more "important" */
+  .scene.legendary-pull.revealed.settled .card {
+    animation: cardFloatLegendary 5.5s ease-in-out infinite !important;
+  }
+  @keyframes cardFloatLegendary {
+    0%, 100% { transform: translate(-50%, -50%) translateY(-50px) scale(1.16) rotate(-2.5deg); }
+    25%      { transform: translate(-50%, -50%) translateY(-62px) scale(1.18)  rotate(0deg); }
+    50%      { transform: translate(-50%, -50%) translateY(-70px) scale(1.16) rotate(2.5deg); }
+    75%      { transform: translate(-50%, -50%) translateY(-62px) scale(1.18)  rotate(0deg); }
+  }
 
   .card-face {
     position: absolute;
@@ -621,6 +631,86 @@
     text-shadow: 0 0 6px #ff00ff;
   }
 
+  /* ============================================================
+     LEGENDARY variant — gold frame, shimmer border, 5 stars
+     ============================================================ */
+  .card-front.legendary {
+    background: linear-gradient(180deg, #fff8d0 0%, #f0d878 70%, #d4a82c 100%);
+    border: 14px solid #d4a82c;
+    box-shadow:
+      0 0 0 3px #b8860b inset,
+      0 0 0 6px #fff6b8 inset,
+      0 20px 50px rgba(0,0,0,.6),
+      0 0 80px rgba(255,200,40,.7);
+    animation: legendaryBorder 4.5s linear infinite;
+  }
+  @keyframes legendaryBorder {
+    0%, 100% {
+      border-color: #d4a82c;
+      box-shadow:
+        0 0 0 3px #b8860b inset,
+        0 0 0 6px #fff6b8 inset,
+        0 20px 50px rgba(0,0,0,.6),
+        0 0 80px rgba(255,200,40,.7);
+    }
+    50% {
+      border-color: #fff0a0;
+      box-shadow:
+        0 0 0 3px #d4a82c inset,
+        0 0 0 6px #ffffff inset,
+        0 20px 50px rgba(0,0,0,.6),
+        0 0 120px rgba(255,220,80,.95);
+    }
+  }
+  /* Slow rotating gold conic-gradient on the inside (replaces shiny rainbow) */
+  .card-front.legendary::after {
+    content: '';
+    position: absolute;
+    inset: 14px;
+    border-radius: 6px;
+    background: conic-gradient(
+      from 0deg,
+      #ffd700, #fff4a0, #ffb800, #ffe680, #ffd700, #fff4a0, #ffb800, #ffd700
+    );
+    background-size: 200% 200%;
+    mix-blend-mode: overlay;
+    opacity: .45;
+    pointer-events: none;
+    animation: rainbowSpin 8s linear infinite;
+  }
+  /* Shimmering diagonal gold streak that sweeps across continuously */
+  .scene.revealed .card-front.legendary::before {
+    opacity: 1;
+    background: linear-gradient(115deg,
+      transparent 25%,
+      rgba(255, 240, 180, .65) 47%,
+      rgba(255, 255, 230, .8) 50%,
+      rgba(255, 220, 120, .65) 53%,
+      transparent 75%);
+    background-size: 250% 250%;
+    background-position: -150% 0%;
+    animation: holoSweep 3.4s linear infinite !important;
+    mix-blend-mode: overlay;
+  }
+  /* Gold name with subtle glow */
+  .card-front.legendary .name {
+    background: linear-gradient(180deg, #fff7c8 0%, #f0c020 60%, #b8860b 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 8px rgba(255,200,40,.5);
+  }
+  .card-front.legendary .footer .rarity .star {
+    color: #ffd700;
+    text-shadow: 0 0 8px #ffd700, 0 0 16px rgba(255,200,40,.7);
+  }
+
+  /* If a card is BOTH shiny AND legendary, layer the shiny holo over the gold */
+  .card-front.shiny.legendary {
+    /* shiny's RGB border wins (it's also animated), but keep the gold inset glow */
+    box-shadow: 0 0 0 3px #d4a82c inset, 0 0 0 6px #ffffff inset, 0 20px 50px rgba(0,0,0,.6), 0 0 90px rgba(255,220,80,.85);
+  }
+
   /* Sparkle particles for shiny reveal */
   .sparkles {
     position: absolute;
@@ -884,6 +974,152 @@
     66%      { border-color: #ffaa00; box-shadow: 0 0 18px #ffaa00, 0 0 48px rgba(255, 170, 0, .35), 0 8px 22px rgba(0,0,0,.55); }
   }
 
+  /* ============================================================
+     LEGENDARY-tier effects (scene-level)
+     ============================================================ */
+
+  /* Legendary aura — gold pulse, stronger than shiny/regular */
+  .scene.legendary-pull .aura {
+    animation: legendaryAuraPulse 1.3s ease-in-out infinite !important;
+  }
+  .scene.legendary-pull.vibrating .aura {
+    animation: legendaryAuraPulse .2s ease-in-out infinite !important;
+  }
+  @keyframes legendaryAuraPulse {
+    0%, 100% {
+      box-shadow:
+        0 0 80px 25px #ffd700,
+        0 0 180px 60px rgba(255, 200, 40, .8);
+      filter: brightness(1.2);
+    }
+    50% {
+      box-shadow:
+        0 0 140px 50px #fff6a0,
+        0 0 280px 110px rgba(255, 230, 100, 1);
+      filter: brightness(1.9);
+    }
+  }
+
+  /* Screen-darken — the rest of the screen dims to spotlight legendary cards */
+  .screen-darken {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center,
+      transparent 0%,
+      rgba(0, 0, 0, .35) 50%,
+      rgba(0, 0, 0, .75) 100%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 80;
+    transition: opacity 1.2s ease-in-out;
+  }
+  .scene.legendary-pull.vibrating .screen-darken { opacity: .7; }
+  .scene.legendary-pull.flashing  .screen-darken { opacity: .85; }
+  .scene.legendary-pull.revealed  .screen-darken {
+    opacity: 1;
+    background: radial-gradient(circle at center,
+      transparent 0%,
+      rgba(0, 0, 0, .3) 45%,
+      rgba(0, 0, 0, .8) 100%);
+  }
+
+  /* Legendary flash — gold radial burst replacing the white/rainbow */
+  .scene.legendary-pull.flashing .flash-overlay {
+    background: radial-gradient(circle at center,
+      #fff6c8 0%, #ffd700 25%, rgba(255, 200, 40, .4) 55%, rgba(255, 200, 40, 0) 75%);
+    animation: flashBurstLegendary 1.3s cubic-bezier(.2, .8, .4, 1) forwards !important;
+  }
+  @keyframes flashBurstLegendary {
+    0%   { opacity: 0; transform: scale(.15); }
+    20%  { opacity: 1; transform: scale(2.5); }
+    60%  { opacity: .65; transform: scale(3.5); }
+    100% { opacity: 0; transform: scale(4.5); }
+  }
+
+  /* Legendary shockwaves — DOUBLE ring (the second one starts later) */
+  .scene.legendary-pull.flashing .shockwave {
+    border-color: rgba(255, 215, 0, .95);
+    box-shadow: 0 0 100px #ffd700, 0 0 240px rgba(255, 200, 40, .9);
+    animation: shockwaveExpandLegendary 1.9s ease-out forwards !important;
+  }
+  @keyframes shockwaveExpandLegendary {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0); border-width: 20px; }
+    6%   { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(50); border-width: 2px; }
+  }
+  /* Second ring fired a moment later (uses the legendary-banner element which we hide visually with display:contents for ringer behaviour) */
+  .scene.legendary-pull .shockwave-2 {
+    position: fixed;
+    left: 50%; top: 50%;
+    width: 100px; height: 100px;
+    transform: translate(-50%, -50%) scale(0);
+    border: 14px solid rgba(255, 245, 200, .9);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 84;
+    box-shadow: 0 0 80px #fff6a0, 0 0 200px rgba(255, 220, 80, .85);
+  }
+  .scene.legendary-pull.flashing .shockwave-2 {
+    animation: shockwaveExpandLegendary 2.2s ease-out .25s forwards;
+  }
+
+  /* Legendary light rays — gold, slower rotation, wider */
+  .scene.legendary-pull .light-rays {
+    background: conic-gradient(from 0deg,
+      transparent 0deg, rgba(255,240,160,.7) 6deg, transparent 12deg,
+      transparent 42deg, rgba(255,210,80,.7) 48deg, transparent 54deg,
+      transparent 84deg, rgba(255,250,200,.7) 90deg, transparent 96deg,
+      transparent 126deg, rgba(255,220,120,.7) 132deg, transparent 138deg,
+      transparent 168deg, rgba(255,240,160,.7) 174deg, transparent 180deg);
+  }
+  .scene.legendary-pull.revealed .light-rays {
+    opacity: 1;
+    animation: lightRayRotate 10s linear infinite;
+  }
+
+  /* "⚜ LEGENDARY" tag — gold pill below the card */
+  .legendary-banner {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, calc(0px + 320px)) scale(.7);
+    background: linear-gradient(180deg, #fff7c8 0%, #f0c020 60%, #b8860b 100%);
+    color: #3a2400;
+    font-family: 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 10px;
+    text-indent: 10px;
+    padding: 9px 24px 9px 34px;
+    border-radius: 100px;
+    border: 2px solid #fff6b8;
+    box-shadow:
+      0 0 25px #ffd700,
+      0 0 60px rgba(255, 200, 40, .6),
+      0 8px 22px rgba(0,0,0,.55),
+      0 0 0 3px rgba(184, 134, 11, .8);
+    text-shadow: 0 1px 0 rgba(255,255,255,.5);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 12;
+    opacity: 0;
+  }
+  .scene.legendary-pull.revealed .legendary-banner {
+    opacity: 1;
+    animation:
+      legendaryTagRise .7s cubic-bezier(.34, 1.56, .64, 1) .3s forwards,
+      legendaryTagGlow 2.4s ease-in-out 1s infinite;
+  }
+  @keyframes legendaryTagRise {
+    0%   { transform: translate(-50%, 380px) scale(.5); opacity: 0; }
+    100% { transform: translate(-50%, 300px) scale(1);  opacity: 1; }
+  }
+  @keyframes legendaryTagGlow {
+    0%, 100% { filter: brightness(1)   drop-shadow(0 0 10px rgba(255,215,0,.6)); }
+    50%      { filter: brightness(1.2) drop-shadow(0 0 22px rgba(255,235,120,.9)); }
+  }
+
   /* Completion celebration (full-screen takeover) */
   #complete-overlay {
     position: fixed;
@@ -987,6 +1223,10 @@
     <button onclick="debugReset()">Wipe local dex</button>
   </div>
   <div class="row">
+    <button onclick="debugLegendary()">⚜ Force legendary</button>
+    <button onclick="debugShinyLegendary()">✦⚜ Shiny legendary</button>
+  </div>
+  <div class="row">
     <button onclick="debugSetCount(149)">Test: 149 caught</button>
     <button onclick="debugCompletion()">Test: completion FX</button>
   </div>
@@ -1013,8 +1253,15 @@ const cfg = Object.assign({
   // Also auto-listen to native Kick events if they come through:
   listenNativeKickGifts: true,
 
-  // Shiny odds: 1 in N
+  // Shiny odds: 1 in N (independent of which Pokemon is picked)
   shinyOdds: 100,
+
+  // Legendary rarity weight (relative to regular cards = 1.0)
+  // 0.1 = legendaries are 10× less likely on any given pull.
+  // Lower = rarer chase. 0.05 = 20× rarer, 0.02 = 50× rarer.
+  // No-dupes means viewers WILL still get all 5 eventually — they just
+  // become rarer mid-collection.
+  legendaryWeight: 0.1,
 
   // Firebase Realtime Database REST URL (e.g. https://your-project.firebaseio.com)
   // Leave blank to run with localStorage only (no public Pokedex).
@@ -1127,21 +1374,38 @@ const Store = {
 /* ============================================================
    CARD SELECTION — no duplicates per viewer
    ============================================================ */
-function pickCardFor(collection, forceShiny = false) {
+function pickCardFor(collection, forceShiny = false, forceLegendary = false) {
   // Build "owned" set keyed by base id (any version blocks dupes per request)
   const ownedIds = new Set();
   for (const k of Object.keys(collection)) {
     const v = collection[k];
     if (v && typeof v.id === 'number') ownedIds.add(v.id);
   }
-  const remaining = KANTO_CARDS.filter(c => !ownedIds.has(c.id));
+  let remaining = KANTO_CARDS.filter(c => !ownedIds.has(c.id));
   if (remaining.length === 0) return null; // already complete
-  const card = remaining[Math.floor(Math.random() * remaining.length)];
+
+  // Debug: force a legendary by restricting the pool to legendaries only
+  if (forceLegendary) {
+    const legendaryRemaining = remaining.filter(c => c.legendary);
+    if (legendaryRemaining.length > 0) remaining = legendaryRemaining;
+  }
+
+  // Weighted random selection: legendaries get cfg.legendaryWeight (default 0.1),
+  // regulars get 1.0. As the pool depletes, legendaries become inevitable.
+  const weights = remaining.map(c => c.legendary ? (cfg.legendaryWeight || 0.1) : 1);
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * totalWeight;
+  let card = remaining[remaining.length - 1]; // safety fallback
+  for (let i = 0; i < remaining.length; i++) {
+    r -= weights[i];
+    if (r <= 0) { card = remaining[i]; break; }
+  }
   const shiny = forceShiny || (Math.random() < (1 / cfg.shinyOdds));
   return { ...card, shiny };
 }
 
 let FORCE_NEXT_SHINY = false;
+let FORCE_NEXT_LEGENDARY = false;
 
 /* ============================================================
    ANIMATION
@@ -1186,7 +1450,7 @@ function buildSceneDOM(card) {
           <div class="logo-bot">POKéMON</div>
         `}
       </div>
-      <div class="card-face card-front ${card.shiny ? 'shiny' : ''}"
+      <div class="card-face card-front ${card.shiny ? 'shiny' : ''} ${card.legendary ? 'legendary' : ''}"
            style="--type-bg:${tc.bg}; --type-border:${tc.border}; --type-text:${tc.text};">
         <div class="header">
           <div class="name">${card.name}</div>
@@ -1199,7 +1463,11 @@ function buildSceneDOM(card) {
         <div class="footer">
           <span class="dex">No. ${String(card.id).padStart(3,'0')} / 151 — Kanto</span>
           <span class="rarity">
-            ${card.shiny ? '<span class="star">★</span><span class="star">★</span><span class="star">★</span>' : '<span class="star">★</span>'}
+            ${card.legendary
+              ? '<span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>'
+              : card.shiny
+                ? '<span class="star">★</span><span class="star">★</span><span class="star">★</span>'
+                : '<span class="star">★</span>'}
           </span>
         </div>
       </div>
@@ -1207,9 +1475,12 @@ function buildSceneDOM(card) {
       <div class="new-badge">NEW!</div>
     </div>
 
-    <!-- shiny-only flourishes (hidden by default unless scene.shiny-pull) -->
+    <!-- rare-tier flourishes (only show when the matching scene class is set) -->
     <div class="shiny-banner">✦ SHINY</div>
+    <div class="legendary-banner">⚜ LEGENDARY</div>
     <div class="shockwave"></div>
+    <div class="shockwave-2"></div>
+    <div class="screen-darken"></div>
     <div class="flash-overlay"></div>
   `;
 
@@ -1233,19 +1504,27 @@ function buildSceneDOM(card) {
       burstEl.appendChild(s);
     }
   }
-  // Sparkles (more for shiny)
-  const sparkleCount = card.shiny ? 28 : 12;
+  // Sparkles — more for shiny, even more for legendary (and larger for legendary)
+  const sparkleCount = card.legendary ? 44 : card.shiny ? 28 : 12;
   const sparklesEl = scene.querySelector('.sparkles');
   for (let i = 0; i < sparkleCount; i++) {
     const s = document.createElement('div');
     s.className = 'sparkle';
     const angle = (Math.PI * 2 * i) / sparkleCount + Math.random() * .3;
-    const dist = 80 + Math.random() * 160;
+    const dist = (card.legendary ? 120 : 80) + Math.random() * (card.legendary ? 220 : 160);
     s.style.left = '50%';
     s.style.top = '50%';
     s.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
     s.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
     s.style.animationDelay = `${Math.random() * .4}s`;
+    // Larger, gold-tinted sparkles for legendaries
+    if (card.legendary) {
+      const size = 18 + Math.random() * 10;
+      s.style.width = `${size}px`;
+      s.style.height = `${size}px`;
+      s.style.background = 'radial-gradient(circle, #fff 0%, #ffd700 35%, rgba(255,200,40,.6) 65%, transparent 80%)';
+      s.style.boxShadow = '0 0 20px #ffd700, 0 0 40px rgba(255,200,40,.7)';
+    }
     sparklesEl.appendChild(s);
   }
   return scene;
@@ -1278,8 +1557,9 @@ async function playPack(gifter, card, isNew) {
   const scene = buildSceneDOM(card);
   document.getElementById('stage').appendChild(scene);
 
-  // Mark shinies up-front so the rainbow/shiny CSS rules can apply throughout
+  // Mark rarity tiers up-front so the matching CSS rules apply throughout
   if (card.shiny) scene.classList.add('shiny-pull');
+  if (card.legendary) scene.classList.add('legendary-pull');
 
   // Preload art so the reveal doesn't show a blank face
   const sprites = cardSprites(card.id);
@@ -1397,8 +1677,9 @@ async function drain() {
     await wait(800);
 
     for (let i = 0; i < job.total; i++) {
-      const force = FORCE_NEXT_SHINY; FORCE_NEXT_SHINY = false;
-      const card = pickCardFor(collection, force);
+      const forceShiny = FORCE_NEXT_SHINY; FORCE_NEXT_SHINY = false;
+      const forceLeg = FORCE_NEXT_LEGENDARY; FORCE_NEXT_LEGENDARY = false;
+      const card = pickCardFor(collection, forceShiny, forceLeg);
       if (!card) {
         // Completed already — fire celebration once
         await celebrate(gifter);
@@ -1582,6 +1863,8 @@ function debugTrigger() {
   enqueueGift(u, c);
 }
 function debugShiny() { FORCE_NEXT_SHINY = true; dbgStatus('next pull will be shiny'); }
+function debugLegendary() { FORCE_NEXT_LEGENDARY = true; dbgStatus('next pull will be legendary'); }
+function debugShinyLegendary() { FORCE_NEXT_SHINY = true; FORCE_NEXT_LEGENDARY = true; dbgStatus('next pull: SHINY LEGENDARY ✨⚜'); }
 function debugReset() {
   const u = document.getElementById('dbg-user').value || 'testviewer';
   localStorage.removeItem(`dex:${u}`);
@@ -1603,6 +1886,8 @@ async function debugCompletion() {
 }
 window.debugTrigger = debugTrigger;
 window.debugShiny = debugShiny;
+window.debugLegendary = debugLegendary;
+window.debugShinyLegendary = debugShinyLegendary;
 window.debugReset = debugReset;
 window.debugSetCount = debugSetCount;
 window.debugCompletion = debugCompletion;
