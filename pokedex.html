@@ -1004,6 +1004,95 @@
     .modal-art-wrap { width: 180px; height: 180px; }
     .leaderboard .lb-stats { gap: 8px; font-size: 12px; }
   }
+
+  /* ============================================================
+     LAYOUT: SIDEBAR — leaderboard pinned to right side
+     Activated with ?layout=sidebar in the URL.
+     ============================================================ */
+  body.layout-sidebar main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 32px;
+    align-items: start;
+  }
+  body.layout-sidebar .leaderboard-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 99;     /* fill the full right column */
+    position: sticky;
+    top: 110px;                /* clears the sticky header */
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-dim) transparent;
+  }
+  body.layout-sidebar .leaderboard-wrap::-webkit-scrollbar { width: 6px; }
+  body.layout-sidebar .leaderboard-wrap::-webkit-scrollbar-thumb {
+    background: var(--gold-dim);
+    border-radius: 3px;
+  }
+  body.layout-sidebar .leaderboard-wrap > .section-title {
+    margin-top: 0;
+  }
+  /* Compact the leaderboard rows a touch in sidebar mode so the full top-10 fits without scrolling on a typical monitor */
+  body.layout-sidebar .leaderboard li {
+    padding: 9px 10px;
+    margin-bottom: 3px;
+    gap: 8px;
+  }
+  body.layout-sidebar .leaderboard .rank {
+    font-size: 18px;
+    width: 26px;
+  }
+  body.layout-sidebar .leaderboard .lb-stats {
+    gap: 8px;
+    font-size: 12px;
+  }
+  body.layout-sidebar .leaderboard .lb-user {
+    font-size: 14px;
+  }
+  body.layout-sidebar .leaderboard {
+    padding: 18px 18px;
+  }
+  /* On smaller screens, stack again so nothing breaks */
+  @media (max-width: 1024px) {
+    body.layout-sidebar main {
+      grid-template-columns: 1fr;
+    }
+    body.layout-sidebar .leaderboard-wrap {
+      grid-column: 1;
+      grid-row: auto;
+      position: static;
+      max-height: none;
+    }
+  }
+
+  /* Layout toggle in the header */
+  .layout-toggle {
+    display: inline-flex;
+    background: rgba(0,0,0,.4);
+    border: 1.5px solid rgba(255,203,5,.5);
+    border-radius: 10px;
+    overflow: hidden;
+    padding: 2px;
+    gap: 2px;
+  }
+  .layout-toggle button {
+    background: transparent;
+    color: rgba(255,255,255,.7);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .layout-toggle button:hover { color: var(--gold); }
+  .layout-toggle button.active {
+    background: var(--gold);
+    color: var(--navy-dark);
+  }
 </style>
 </head>
 <body>
@@ -1016,6 +1105,10 @@
     </div>
     <div class="who">Viewer:<strong id="who">…</strong></div>
     <div class="controls">
+      <div class="layout-toggle" id="layout-toggle">
+        <button data-layout="stack" onclick="setLayout('stack')">Stack</button>
+        <button data-layout="sidebar" onclick="setLayout('sidebar')">Sidebar</button>
+      </div>
       <input id="user-input" placeholder="Look up viewer">
       <button onclick="changeUser()">View</button>
     </div>
@@ -1063,15 +1156,17 @@
   <h2 class="section-title"><span class="icon">🏅</span> Achievements <span class="hint" id="ach-count">0/0 unlocked</span></h2>
   <section class="achievements-wrap" id="achievements"></section>
 
-  <!-- Leaderboard -->
-  <h2 class="section-title"><span class="icon">🏆</span> Top Collectors <span class="hint">stream leaderboard</span></h2>
-  <section class="leaderboard">
-    <ol id="leaderboard-list"><li class="lb-empty">Loading…</li></ol>
-    <div class="completers-block" id="completers-block" style="display:none;">
-      <h3>⚜ Pokédex Completed</h3>
-      <ul id="completers-list"></ul>
-    </div>
-  </section>
+  <!-- Leaderboard (wrapped so it can be repositioned to a sidebar via ?layout=sidebar) -->
+  <aside class="leaderboard-wrap">
+    <h2 class="section-title"><span class="icon">🏆</span> Top Collectors <span class="hint">stream leaderboard</span></h2>
+    <section class="leaderboard">
+      <ol id="leaderboard-list"><li class="lb-empty">Loading…</li></ol>
+      <div class="completers-block" id="completers-block" style="display:none;">
+        <h3>⚜ Pokédex Completed</h3>
+        <ul id="completers-list"></ul>
+      </div>
+    </section>
+  </aside>
 </main>
 
 <footer>
@@ -1112,6 +1207,22 @@ const cfg = Object.assign({ firebaseUrl: '' }, window.STREAM_CONFIG || {});
 let currentUser = Q.get('viewer') || Q.get('user') || localStorage.getItem('lastViewer') || 'guest';
 let currentFilter = 'all';
 let collection = {};
+
+/* ============================================================
+   LAYOUT — A/B testable: ?layout=sidebar  or  ?layout=stack
+   Preference also persisted in localStorage so it sticks.
+   ============================================================ */
+function setLayout(mode) {
+  if (mode !== 'sidebar' && mode !== 'stack') mode = 'stack';
+  localStorage.setItem('pokedexLayout', mode);
+  document.body.classList.toggle('layout-sidebar', mode === 'sidebar');
+  document.body.classList.toggle('layout-stack', mode === 'stack');
+  document.querySelectorAll('#layout-toggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.layout === mode);
+  });
+}
+// URL param wins, falls back to localStorage, falls back to 'stack'
+setLayout(Q.get('layout') || localStorage.getItem('pokedexLayout') || 'stack');
 
 const descriptionCache = {};
 const evolutionCache = {};
