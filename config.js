@@ -55,5 +55,5 @@ window.STREAM_CONFIG = {
   // you've uploaded to your own GitHub repo. NOTE: hosting Nintendo/Pokémon-
   // licensed artwork on public sites can attract takedown notices — that's
   // your call.
-  cardBackImageUrl: 'https://www.deviantart.com/atomicmonkeytcg/art/Pokemon-Card-Backside-in-High-Resolution-633406210',
+  cardBackImageUrl: 'https://raw.githubusercontent.com/amateurgamer18/pokemon-pack-overlay/main/pokemon_card_backside_in_high_resolution_by_atomicmonkeytcg_dah43cy.png',
 };
