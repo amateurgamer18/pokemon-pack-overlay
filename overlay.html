@@ -1000,24 +1000,28 @@
     }
   }
 
-  /* Screen-darken — brief spotlight during the build-up only, fades out after reveal */
+  /* Screen-darken — heavy dim during the build-up to maximise the gold-flash pop,
+     then drops away so the reveal & settled phases look clean over your stream. */
   .screen-darken {
     position: fixed;
     inset: 0;
     background: radial-gradient(circle at center,
       transparent 0%,
-      rgba(0, 0, 0, .15) 50%,
-      rgba(0, 0, 0, .45) 100%);
+      rgba(0, 0, 0, .35) 45%,
+      rgba(0, 0, 0, .85) 100%);
     opacity: 0;
     pointer-events: none;
     z-index: 80;
-    transition: opacity 1s ease-in-out;
+    transition: opacity .9s ease-in-out;
   }
-  /* Subtle darken during the tension build-up only */
-  .scene.legendary-pull.vibrating .screen-darken { opacity: .45; }
-  .scene.legendary-pull.flashing  .screen-darken { opacity: .55; }
-  /* On reveal, fade the dim back out — card is doing the visual work now */
-  .scene.legendary-pull.revealed  .screen-darken { opacity: .2; }
+  /* Build-up: heavy dark so the imminent flash will pop hard */
+  .scene.legendary-pull.vibrating .screen-darken { opacity: .9; }
+  .scene.legendary-pull.flashing  .screen-darken {
+    opacity: .9;
+    transition: opacity .6s ease-out;   /* faster fade-out once card is revealing */
+  }
+  /* Reveal & settled: clean — card is doing the work, no more dim */
+  .scene.legendary-pull.revealed  .screen-darken { opacity: .12; }
   .scene.legendary-pull.settled   .screen-darken { opacity: 0; }
 
   /* Legendary flash — gold radial burst replacing the white/rainbow */
