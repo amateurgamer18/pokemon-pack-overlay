@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pokemon Pack Opening Overlay</title>
+<style>
+  /* ============================================================
+     OBS BROWSER SOURCE — transparent background, no scrollbars
+     Default canvas: 1920x1080. Animation centers itself.
+     ============================================================ */
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: transparent;
+    font-family: 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  /* ---------- Gifter banner (top of screen) ---------- */
+  #banner {
+    position: fixed;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-200%);
+    background: linear-gradient(135deg, #ffcb05 0%, #f6a800 100%);
+    color: #2a3b8f;
+    font-weight: 800;
+    font-size: 32px;
+    padding: 16px 40px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5), 0 0 0 4px #2a3b8f, 0 0 0 8px #ffcb05;
+    text-shadow: 2px 2px 0 rgba(255,255,255,.3);
+    transition: transform .6s cubic-bezier(.34,1.56,.64,1);
+    z-index: 10;
+    text-align: center;
+    line-height: 1.2;
+  }
+  #banner.show { transform: translateX(-50%) translateY(0); }
+  #banner .sub { font-size: 18px; font-weight: 600; opacity: .85; margin-top: 4px; }
+
+  /* ---------- Pack & Card container ---------- */
+  .scene {
+    width: 480px;
+    height: 680px;
+    position: relative;
+    perspective: 1600px;
+    transform-style: preserve-3d;
+  }
+
+  /* ---------- Pack ---------- */
+  .pack {
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at 50% 75%, rgba(255,255,255,.12) 0%, transparent 60%),
+      linear-gradient(180deg, #d83f3f 0%, #b81e1e 50%, #8b1414 100%);
+    box-shadow:
+      inset 0 0 40px rgba(0,0,0,.4),
+      0 20px 60px rgba(0,0,0,.6);
+    overflow: hidden;
+    transform-origin: center top;
+  }
+  .pack-foil {
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(115deg, transparent 0px, transparent 8px, rgba(255,255,255,.05) 8px, rgba(255,255,255,.05) 16px);
+    mix-blend-mode: overlay;
+  }
+  .pack-logo {
+    position: absolute;
+    top: 90px;
+    left: 0; right: 0;
+    text-align: center;
+    color: #ffcb05;
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    text-shadow:
+      -3px -3px 0 #2a3b8f, 3px -3px 0 #2a3b8f,
+      -3px 3px 0 #2a3b8f, 3px 3px 0 #2a3b8f,
+       0 8px 0 #1a2966, 0 12px 24px rgba(0,0,0,.6);
+    transform: rotate(-4deg);
+    font-family: 'Impact', 'Arial Black', sans-serif;
+  }
+  .pack-logo .sub {
+    display: block;
+    margin-top: 8px;
+    font-size: 22px;
+    letter-spacing: 6px;
+    color: #fff;
+    text-shadow: 2px 2px 0 #2a3b8f;
+    transform: rotate(0deg);
+  }
+  .pokeball {
+    position: absolute;
+    left: 50%; top: 58%;
+    width: 220px; height: 220px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background:
+      linear-gradient(180deg, #ee1515 0%, #ee1515 49%, #222 49%, #222 51%, #f0f0f0 51%, #f0f0f0 100%);
+    box-shadow:
+      inset -10px -10px 30px rgba(0,0,0,.3),
+      inset 8px 8px 20px rgba(255,255,255,.2),
+      0 6px 20px rgba(0,0,0,.4);
+  }
+  .pokeball::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 60px; height: 60px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #f0f0f0;
+    box-shadow:
+      inset -3px -3px 6px rgba(0,0,0,.2),
+      0 0 0 8px #222,
+      0 0 0 12px #f0f0f0;
+  }
+  .pack-stripe {
+    position: absolute;
+    left: 0; right: 0;
+    height: 30px;
+    background:
+      linear-gradient(180deg, #ffcb05 0%, #f6a800 100%);
+    box-shadow:
+      0 4px 0 0 #2a3b8f inset,
+      0 -4px 0 0 #2a3b8f inset;
+  }
+  .pack-stripe.top { top: 50px; }
+  .pack-stripe.bot { bottom: 50px; }
+
+  /* Pack cut line at top — animated rip */
+  .pack-cut {
+    position: absolute;
+    top: 24px;
+    left: 0; right: 0;
+    height: 4px;
+    background: repeating-linear-gradient(90deg, #fff 0 8px, transparent 8px 16px);
+    opacity: 0;
+  }
+
+  /* Pack opens: top half flips up & away */
+  .pack-top, .pack-bot {
+    position: absolute;
+    left: 0; right: 0;
+    overflow: hidden;
+    transition: transform 1.4s cubic-bezier(.7,0,.84,0), opacity 1.4s ease-out;
+    transform-style: preserve-3d;
+  }
+  .pack-top {
+    top: 0;
+    height: 30%;
+    transform-origin: bottom center;
+  }
+  .pack-bot {
+    bottom: 0;
+    height: 70%;
+    transform-origin: top center;
+  }
+
+  .scene.opened .pack-top {
+    transform: rotateX(-160deg) translateY(-60px);
+    opacity: 0;
+  }
+  .scene.opened .pack-bot {
+    transform: translateY(40px) rotateX(15deg);
+  }
+
+  /* ---------- Card ---------- */
+  .card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 380px;
+    height: 530px;
+    transform: translate(-50%, -50%) translateY(120px) scale(.85) rotateY(180deg);
+    transform-style: preserve-3d;
+    opacity: 0;
+    transition: opacity .4s ease-out, transform 1.2s cubic-bezier(.34,1.56,.64,1);
+    border-radius: 18px;
+    will-change: transform;
+  }
+  .scene.opened .card {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-30px) scale(1) rotateY(180deg);
+  }
+  .scene.spinning .card {
+    animation: spinDecelerate 7s cubic-bezier(.15,.95,.35,1) forwards;
+  }
+  @keyframes spinDecelerate {
+    0%   { transform: translate(-50%, -50%) translateY(-30px) scale(1) rotateY(180deg); }
+    100% { transform: translate(-50%, -50%) translateY(-30px) scale(1) rotateY(2520deg); }
+    /* 2520deg = 180deg + 6.5 full rotations, lands on 360°*7 = face out */
+  }
+
+  .scene.revealed .card {
+    animation: cardReveal .9s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes cardReveal {
+    0%   { transform: translate(-50%, -50%) translateY(-30px) scale(1)    rotateY(2520deg); }
+    60%  { transform: translate(-50%, -50%) translateY(-50px) scale(1.08) rotateY(2520deg); }
+    100% { transform: translate(-50%, -50%) translateY(-30px) scale(1.04) rotateY(2520deg); }
+  }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  /* Card back (Pokemon TCG style) */
+  .card-back {
+    background:
+      radial-gradient(circle at 50% 50%, #4a5fd6 0%, #2a3b8f 60%, #1a2966 100%);
+    border: 12px solid #ffcb05;
+    box-shadow: 0 0 0 4px #2a3b8f inset, 0 20px 40px rgba(0,0,0,.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotateY(180deg);
+  }
+  .card-back .pokeball-back {
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background:
+      linear-gradient(180deg, #ee1515 0%, #ee1515 49%, #222 49%, #222 51%, #f0f0f0 51%, #f0f0f0 100%);
+    box-shadow:
+      inset -10px -10px 30px rgba(0,0,0,.3),
+      inset 8px 8px 20px rgba(255,255,255,.3),
+      0 6px 20px rgba(0,0,0,.5);
+    position: relative;
+  }
+  .card-back .pokeball-back::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 56px; height: 56px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #f0f0f0;
+    box-shadow: 0 0 0 8px #222, 0 0 0 12px #f0f0f0;
+  }
+  .card-back .label {
+    position: absolute;
+    bottom: 24px;
+    width: 100%;
+    text-align: center;
+    color: #ffcb05;
+    font-family: 'Impact', sans-serif;
+    font-size: 18px;
+    letter-spacing: 4px;
+    text-shadow: 2px 2px 0 #1a2966;
+  }
+
+  /* Card front (TCG-styled) */
+  .card-front {
+    --type-bg: #A8A878;
+    --type-border: #6D6D4E;
+    --type-text: #fff;
+    background: linear-gradient(180deg, #fff8d5 0%, #fde9a1 100%);
+    border: 14px solid #ffcb05;
+    box-shadow:
+      0 0 0 3px #c79500 inset,
+      0 20px 40px rgba(0,0,0,.5);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  .card-front .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+    padding: 0 4px;
+  }
+  .card-front .name {
+    font-size: 26px;
+    font-weight: 900;
+    text-shadow: 2px 2px 0 #fff;
+    letter-spacing: -.5px;
+  }
+  .card-front .hp {
+    font-size: 22px;
+    font-weight: 800;
+    color: #c00;
+    text-shadow: 1px 1px 0 #fff;
+  }
+  .card-front .hp .num { font-size: 28px; }
+
+  .card-front .art {
+    flex: 1;
+    background: linear-gradient(180deg, #a8d8f8 0%, #6890f0 60%, #4a78d0 100%);
+    border: 6px solid var(--type-border);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-front .art img {
+    width: 92%;
+    height: 92%;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,.4));
+  }
+  .card-front .art .type-badge {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--type-bg);
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--type-text);
+    font-weight: 900;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  .card-front .footer {
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: rgba(0,0,0,.06);
+    border-radius: 4px;
+    color: #333;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-front .footer .dex { font-weight: 700; }
+  .card-front .footer .rarity {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .card-front .rarity .star {
+    color: #ffcb05;
+    text-shadow: 1px 1px 0 #c79500;
+    font-size: 16px;
+  }
+
+  /* Holo shimmer overlay (always present on standard cards, subtle) */
+  .card-front::before {
+    content: '';
+    position: absolute;
+    inset: 14px;
+    border-radius: 6px;
+    background: linear-gradient(115deg,
+      transparent 30%,
+      rgba(255,255,255,.4) 50%,
+      transparent 70%);
+    background-size: 200% 200%;
+    background-position: -100% -100%;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    opacity: 0;
+    transition: opacity .4s;
+  }
+  .scene.revealed .card-front::before {
+    opacity: 1;
+    animation: shimmer 2.2s ease-in-out;
+  }
+  @keyframes shimmer {
+    0%   { background-position: -100% -100%; opacity: 0; }
+    50%  { opacity: 1; }
+    100% { background-position: 200% 200%; opacity: 0; }
+  }
+
+  /* SHINY variant — rainbow holo full overlay + name color shift */
+  .card-front.shiny {
+    background: linear-gradient(180deg, #fff 0%, #f0f0ff 100%);
+  }
+  .card-front.shiny::after {
+    content: '';
+    position: absolute;
+    inset: 14px;
+    border-radius: 6px;
+    background: conic-gradient(
+      from 0deg,
+      #ff00ff, #ff8800, #ffff00, #00ff88, #00ffff, #0088ff, #ff00ff
+    );
+    background-size: 200% 200%;
+    mix-blend-mode: color-dodge;
+    opacity: .35;
+    pointer-events: none;
+    animation: rainbowSpin 6s linear infinite;
+  }
+  @keyframes rainbowSpin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .card-front.shiny .name {
+    background: linear-gradient(90deg, #ff00aa, #ffaa00, #00ddff, #aa00ff);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    animation: rainbowText 3s linear infinite;
+    text-shadow: none;
+  }
+  @keyframes rainbowText {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+  .card-front.shiny .footer .rarity .star {
+    color: #ff00ff;
+    text-shadow: 0 0 6px #ff00ff;
+  }
+
+  /* Sparkle particles for shiny reveal */
+  .sparkles {
+    position: absolute;
+    inset: -40px;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .scene.revealed .sparkles { opacity: 1; }
+  .sparkle {
+    position: absolute;
+    width: 14px; height: 14px;
+    background:
+      radial-gradient(circle, #fff 0%, #ffcb05 30%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0;
+  }
+  .scene.revealed .sparkle {
+    animation: sparkleBurst 1.6s ease-out forwards;
+  }
+  @keyframes sparkleBurst {
+    0%   { transform: translate(0,0) scale(0); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
+  }
+
+  /* ---------- New badge ---------- */
+  .new-badge {
+    position: absolute;
+    top: -18px;
+    right: -18px;
+    background: linear-gradient(135deg, #ff3366 0%, #cc0044 100%);
+    color: #fff;
+    font-weight: 900;
+    font-size: 18px;
+    padding: 10px 18px;
+    border-radius: 100px;
+    transform: rotate(15deg) scale(0);
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+    text-shadow: 1px 1px 0 rgba(0,0,0,.3);
+    z-index: 5;
+    transition: transform .5s cubic-bezier(.34,1.56,.64,1) .4s;
+  }
+  .scene.revealed .new-badge.show { transform: rotate(15deg) scale(1); }
+
+  /* Scene entrance/exit */
+  .scene {
+    opacity: 0;
+    transform: scale(.6);
+    transition: opacity .5s, transform .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  .scene.enter {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .scene.exit {
+    opacity: 0;
+    transform: scale(.85) translateY(40px);
+    transition: opacity .8s, transform .8s ease-in;
+  }
+
+  /* Completion celebration (full-screen takeover) */
+  #complete-overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle, rgba(0,0,0,.85) 0%, rgba(0,0,0,.95) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ffcb05;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .8s;
+    z-index: 100;
+  }
+  #complete-overlay.show { opacity: 1; }
+  #complete-overlay .big {
+    font-size: 96px;
+    font-family: 'Impact', sans-serif;
+    letter-spacing: 4px;
+    text-shadow:
+      -4px -4px 0 #2a3b8f, 4px -4px 0 #2a3b8f,
+      -4px 4px 0 #2a3b8f, 4px 4px 0 #2a3b8f,
+      0 10px 40px rgba(255,203,5,.8);
+    animation: bigPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes bigPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.08); }
+  }
+  #complete-overlay .sub {
+    font-size: 32px;
+    color: #fff;
+    margin-top: 24px;
+    text-shadow: 2px 2px 0 #2a3b8f;
+  }
+  #complete-overlay .who { color: #ffcb05; font-weight: 900; }
+
+  /* ---------- Debug panel (only with ?debug=1) ---------- */
+  #debug {
+    position: fixed;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(0,0,0,.8);
+    color: #0f0;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 10px;
+    border-radius: 6px;
+    max-width: 380px;
+    z-index: 200;
+    pointer-events: auto;
+    display: none;
+  }
+  #debug.on { display: block; }
+  #debug button {
+    background: #ffcb05;
+    color: #2a3b8f;
+    border: none;
+    padding: 6px 10px;
+    margin: 2px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  #debug input {
+    background: #111;
+    color: #0f0;
+    border: 1px solid #333;
+    padding: 4px;
+    font-family: monospace;
+    width: 120px;
+  }
+  #debug .row { margin: 4px 0; }
+  #debug .status { color: #0ff; }
+</style>
+</head>
+<body>
+
+<div id="banner"></div>
+
+<div id="stage"></div>
+
+<div id="complete-overlay">
+  <div class="big">GOTTA CATCH 'EM ALL!</div>
+  <div class="sub"><span class="who" id="complete-who"></span> just completed the Kanto Pokédex!</div>
+  <div class="sub" style="font-size:24px; margin-top:40px;">🏆 First completer wins the prize 🏆</div>
+</div>
+
+<div id="debug">
+  <div class="row status" id="status">connecting…</div>
+  <div class="row">
+    <input id="dbg-user" placeholder="username" value="testviewer">
+    <input id="dbg-count" placeholder="qty" value="1" type="number" min="1" max="50" style="width:50px">
+  </div>
+  <div class="row">
+    <button onclick="debugTrigger()">Fire gift event</button>
+    <button onclick="debugShiny()">Force shiny next</button>
+    <button onclick="debugReset()">Wipe local dex</button>
+  </div>
+  <div class="row">
+    <button onclick="debugSetCount(149)">Test: 149 caught</button>
+    <button onclick="debugCompletion()">Test: completion FX</button>
+  </div>
+</div>
+
+<script src="cards.js"></script>
+<script src="config.js"></script>
+<script>
+/* ============================================================
+   CONFIG & STATE
+   ============================================================ */
+const Q = new URLSearchParams(location.search);
+const cfg = Object.assign({
+  // Streamer.bot WebSocket (defaults match Streamer.bot's defaults)
+  streamerbotHost: '127.0.0.1',
+  streamerbotPort: 8080,
+  streamerbotEndpoint: '/',
+  streamerbotPassword: '',
+
+  // Event matching — set the Streamer.bot Custom Event name you'll fire from
+  // your "Kick Gift Subscription" action. Default: 'pokepack'.
+  customEventName: 'pokepack',
+
+  // Also auto-listen to native Kick events if they come through:
+  listenNativeKickGifts: true,
+
+  // Shiny odds: 1 in N
+  shinyOdds: 100,
+
+  // Firebase Realtime Database REST URL (e.g. https://your-project.firebaseio.com)
+  // Leave blank to run with localStorage only (no public Pokedex).
+  firebaseUrl: '',
+
+  // Pack economy: every N gifted subs earns the viewer one pack.
+  // Carry-over: a viewer who gifts 1 today and 1 tomorrow earns a pack tomorrow.
+  giftsPerPack: 2,
+  cardsPerPack: 1,
+
+  // Total animation length per card (ms)
+  animMs: 10000,
+  // How long card lingers after the 10s reveal (ms)
+  lingerMs: 4000,
+}, window.STREAM_CONFIG || {});
+
+// URL overrides (e.g. ?shinyOdds=20 for testing)
+for (const k of Object.keys(cfg)) {
+  if (Q.has(k)) {
+    const v = Q.get(k);
+    cfg[k] = (typeof cfg[k] === 'number') ? Number(v) : v;
+  }
+}
+
+const DEBUG = Q.has('debug');
+if (DEBUG) document.getElementById('debug').classList.add('on');
+const dbgStatus = (s) => { const el = document.getElementById('status'); if (el) el.textContent = s; };
+
+/* ============================================================
+   STORAGE — Firebase REST (optional) + localStorage fallback
+   ============================================================ */
+const Store = {
+  async getCollection(user) {
+    const key = `dex:${user}`;
+    const local = JSON.parse(localStorage.getItem(key) || '{}');
+    if (!cfg.firebaseUrl) return local;
+    try {
+      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(user)}.json`);
+      const remote = await r.json();
+      const merged = Object.assign({}, local, remote || {});
+      localStorage.setItem(key, JSON.stringify(merged));
+      return merged;
+    } catch (e) {
+      console.warn('Firebase read failed, using local:', e);
+      return local;
+    }
+  },
+  async savePull(user, card) {
+    const key = `dex:${user}`;
+    const local = JSON.parse(localStorage.getItem(key) || '{}');
+    const slotKey = `${card.id}${card.shiny ? '_shiny' : ''}`;
+    local[slotKey] = { id: card.id, shiny: card.shiny, name: card.name, at: Date.now() };
+    localStorage.setItem(key, JSON.stringify(local));
+    if (!cfg.firebaseUrl) return;
+    try {
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(user)}/${slotKey}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(local[slotKey]),
+      });
+    } catch (e) {
+      console.warn('Firebase write failed:', e);
+    }
+  },
+  async getCredits(user) {
+    const local = parseInt(localStorage.getItem(`credits:${user}`) || '0') || 0;
+    if (!cfg.firebaseUrl) return local;
+    try {
+      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/credits/${encodeURIComponent(user)}.json`);
+      const remote = await r.json();
+      const v = typeof remote === 'number' ? remote : local;
+      localStorage.setItem(`credits:${user}`, String(v));
+      return v;
+    } catch (e) {
+      return local;
+    }
+  },
+  async setCredits(user, n) {
+    localStorage.setItem(`credits:${user}`, String(n));
+    if (!cfg.firebaseUrl) return;
+    try {
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/credits/${encodeURIComponent(user)}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(n),
+      });
+    } catch (e) { console.warn('credit write failed:', e); }
+  },
+  async markCompleter(user) {
+    const key = `completers`;
+    const local = JSON.parse(localStorage.getItem(key) || '[]');
+    if (!local.find(x => x.user === user)) {
+      local.push({ user, at: Date.now() });
+      localStorage.setItem(key, JSON.stringify(local));
+    }
+    if (!cfg.firebaseUrl) return;
+    try {
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/completers/${encodeURIComponent(user)}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, at: Date.now() }),
+      });
+    } catch (e) { console.warn(e); }
+  }
+};
+
+/* ============================================================
+   CARD SELECTION — no duplicates per viewer
+   ============================================================ */
+function pickCardFor(collection, forceShiny = false) {
+  // Build "owned" set keyed by base id (any version blocks dupes per request)
+  const ownedIds = new Set();
+  for (const k of Object.keys(collection)) {
+    const v = collection[k];
+    if (v && typeof v.id === 'number') ownedIds.add(v.id);
+  }
+  const remaining = KANTO_CARDS.filter(c => !ownedIds.has(c.id));
+  if (remaining.length === 0) return null; // already complete
+  const card = remaining[Math.floor(Math.random() * remaining.length)];
+  const shiny = forceShiny || (Math.random() < (1 / cfg.shinyOdds));
+  return { ...card, shiny };
+}
+
+let FORCE_NEXT_SHINY = false;
+
+/* ============================================================
+   ANIMATION
+   ============================================================ */
+function buildSceneDOM(card) {
+  const tc = TYPE_COLORS[card.type] || TYPE_COLORS.Normal;
+  const sprites = cardSprites(card.id);
+  const artUrl = card.shiny ? sprites.shiny : sprites.standard;
+
+  const scene = document.createElement('div');
+  scene.className = 'scene';
+  scene.innerHTML = `
+    <div class="pack">
+      <div class="pack-top">
+        <div class="pack-foil"></div>
+        <div class="pack-stripe top"></div>
+        <div class="pack-cut"></div>
+      </div>
+      <div class="pack-bot">
+        <div class="pack-foil"></div>
+        <div class="pack-logo">POKéMON<span class="sub">TRADING CARD GAME</span></div>
+        <div class="pokeball"></div>
+        <div class="pack-stripe bot"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-face card-back">
+        <div class="pokeball-back"></div>
+        <div class="label">POKéMON</div>
+      </div>
+      <div class="card-face card-front ${card.shiny ? 'shiny' : ''}"
+           style="--type-bg:${tc.bg}; --type-border:${tc.border}; --type-text:${tc.text};">
+        <div class="header">
+          <div class="name">${card.name}</div>
+          <div class="hp">HP<span class="num">${card.hp}</span></div>
+        </div>
+        <div class="art" style="background: linear-gradient(180deg, ${tc.bg}55 0%, ${tc.bg}cc 100%);">
+          <div class="type-badge">${card.type.slice(0,3)}</div>
+          <img src="${artUrl}" alt="${card.name}" loading="eager">
+        </div>
+        <div class="footer">
+          <span class="dex">No. ${String(card.id).padStart(3,'0')} / 151 — Kanto</span>
+          <span class="rarity">
+            ${card.shiny ? '<span class="star">★</span><span class="star">★</span><span class="star">★</span>' : '<span class="star">★</span>'}
+          </span>
+        </div>
+      </div>
+      <div class="sparkles"></div>
+      <div class="new-badge">NEW!</div>
+    </div>
+  `;
+  // Sparkles (more for shiny)
+  const sparkleCount = card.shiny ? 28 : 12;
+  const sparklesEl = scene.querySelector('.sparkles');
+  for (let i = 0; i < sparkleCount; i++) {
+    const s = document.createElement('div');
+    s.className = 'sparkle';
+    const angle = (Math.PI * 2 * i) / sparkleCount + Math.random() * .3;
+    const dist = 80 + Math.random() * 160;
+    s.style.left = '50%';
+    s.style.top = '50%';
+    s.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+    s.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+    s.style.animationDelay = `${Math.random() * .4}s`;
+    sparklesEl.appendChild(s);
+  }
+  return scene;
+}
+
+function showBanner(gifter, info) {
+  const b = document.getElementById('banner');
+  b.innerHTML = `🎁 ${escapeHtml(gifter)} gifted a sub!<div class="sub">${escapeHtml(info)}</div>`;
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), Math.min(8000, cfg.animMs + 2000));
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* Preload the chosen card's image so the spin doesn't show a blank face */
+function preload(url) {
+  return new Promise(resolve => {
+    const i = new Image();
+    i.onload = i.onerror = () => resolve();
+    i.src = url;
+  });
+}
+
+async function playPack(gifter, card, isNew) {
+  // Build the scene
+  const scene = buildSceneDOM(card);
+  document.getElementById('stage').appendChild(scene);
+
+  // Preload art
+  const sprites = cardSprites(card.id);
+  await preload(card.shiny ? sprites.shiny : sprites.standard);
+
+  // Show NEW badge if applicable
+  if (isNew) scene.querySelector('.new-badge').classList.add('show');
+
+  // === Timeline (total ~10s) ===
+  // 0–600ms: scene enters
+  // 600–1500ms: pack top cut indicator
+  // 1500–2900ms: pack opens (top flips back)
+  // 2900–3500ms: card back rises (already CSS-transitioned in)
+  // 3500ms: start 7s spin decelerating
+  // 10500ms: reveal lock-in
+  // +lingerMs: exit
+
+  requestAnimationFrame(() => scene.classList.add('enter'));
+
+  // Pack cut indicator
+  await wait(900);
+  const cut = scene.querySelector('.pack-cut');
+  cut.style.opacity = '1';
+  cut.style.transition = 'opacity .2s';
+
+  // Open pack
+  await wait(600);
+  scene.classList.add('opened');
+
+  // Wait for card back to settle, then spin
+  await wait(1000); // card back rising
+  scene.classList.add('spinning');
+
+  // Wait for spin to complete (7s)
+  await wait(7000);
+
+  // Lock-in reveal
+  scene.classList.add('revealed');
+  await wait(900);
+
+  // Linger
+  await wait(cfg.lingerMs);
+
+  // Exit
+  scene.classList.add('exit');
+  await wait(900);
+  scene.remove();
+}
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ============================================================
+   QUEUE
+   ============================================================ */
+const queue = [];
+let busy = false;
+
+async function enqueueGift(gifter, count = 1) {
+  count = Math.max(1, parseInt(count) || 1);
+  const user = gifter || 'Anonymous';
+
+  // Add gifts to this viewer's credit balance
+  let credits = await Store.getCredits(user);
+  credits += count;
+
+  // How many packs do they earn now?
+  const packsEarned = Math.floor(credits / cfg.giftsPerPack);
+  const remainder = credits % cfg.giftsPerPack;
+  await Store.setCredits(user, remainder);
+
+  if (packsEarned === 0) {
+    // Not enough yet — show a "progress" banner and bail
+    showBanner(user, `🎁 +${count} sub${count>1?'s':''} → ${remainder}/${cfg.giftsPerPack} toward a pack`);
+    dbgStatus(`${user}: ${count} gifted, ${remainder}/${cfg.giftsPerPack}`);
+    return;
+  }
+
+  const totalCards = packsEarned * cfg.cardsPerPack;
+  queue.push({ gifter: user, total: totalCards, packsEarned, remainder, giftCount: count });
+  dbgStatus(`${user}: ${count} gifted → ${packsEarned} pack${packsEarned>1?'s':''} (carry: ${remainder})`);
+  if (!busy) drain();
+}
+
+async function drain() {
+  busy = true;
+  while (queue.length) {
+    const job = queue.shift();
+    const gifter = job.gifter || 'Anonymous';
+
+    let collection = await Store.getCollection(gifter);
+    const totalOwned = countOwned(collection);
+
+    const carryLine = job.remainder > 0 ? ` · carry ${job.remainder}/${cfg.giftsPerPack}` : '';
+    showBanner(gifter, `${job.packsEarned} pack${job.packsEarned>1?'s':''} earned · Pokédex ${totalOwned}/151${carryLine}`);
+    await wait(800);
+
+    for (let i = 0; i < job.total; i++) {
+      const force = FORCE_NEXT_SHINY; FORCE_NEXT_SHINY = false;
+      const card = pickCardFor(collection, force);
+      if (!card) {
+        // Completed already — fire celebration once
+        await celebrate(gifter);
+        break;
+      }
+      const isNew = true; // by design we never give dupes, so every pull is new
+      await playPack(gifter, card, isNew);
+      // Update collection state
+      const slotKey = `${card.id}${card.shiny ? '_shiny' : ''}`;
+      collection[slotKey] = { id: card.id, shiny: card.shiny, name: card.name, at: Date.now() };
+      await Store.savePull(gifter, card);
+
+      // Check completion after this pull
+      if (countOwned(collection) === 151) {
+        await celebrate(gifter);
+        break;
+      }
+      await wait(400);
+    }
+  }
+  busy = false;
+}
+
+function countOwned(collection) {
+  const ids = new Set();
+  for (const k of Object.keys(collection)) {
+    const v = collection[k];
+    if (v && typeof v.id === 'number') ids.add(v.id);
+  }
+  return ids.size;
+}
+
+async function celebrate(user) {
+  await Store.markCompleter(user);
+  document.getElementById('complete-who').textContent = user;
+  const ov = document.getElementById('complete-overlay');
+  ov.classList.add('show');
+  await wait(10000);
+  ov.classList.remove('show');
+}
+
+/* ============================================================
+   STREAMER.BOT WEBSOCKET CONNECTION
+   ============================================================ */
+let ws = null;
+let reconnectTimer = null;
+
+function connect() {
+  const url = `ws://${cfg.streamerbotHost}:${cfg.streamerbotPort}${cfg.streamerbotEndpoint}`;
+  dbgStatus(`connecting ${url}`);
+  try {
+    ws = new WebSocket(url);
+  } catch (e) {
+    dbgStatus(`ws error: ${e.message}`);
+    scheduleReconnect();
+    return;
+  }
+  ws.addEventListener('open', () => {
+    dbgStatus('connected');
+    // Authenticate if password is set
+    if (cfg.streamerbotPassword) {
+      ws.send(JSON.stringify({
+        request: 'Authenticate',
+        id: 'auth',
+        password: cfg.streamerbotPassword,
+      }));
+    }
+    // Subscribe to events: custom event + Kick GiftSubscription
+    const events = { General: ['Custom'] };
+    if (cfg.listenNativeKickGifts) {
+      events.Kick = ['GiftedSubscriptions', 'Subscription'];
+    }
+    ws.send(JSON.stringify({
+      request: 'Subscribe',
+      id: 'sub-main',
+      events,
+    }));
+  });
+  ws.addEventListener('message', (m) => {
+    let msg; try { msg = JSON.parse(m.data); } catch { return; }
+    handleSbMessage(msg);
+  });
+  ws.addEventListener('close', () => {
+    dbgStatus('disconnected — retrying in 3s');
+    scheduleReconnect();
+  });
+  ws.addEventListener('error', () => {
+    dbgStatus('connection error');
+  });
+}
+
+function scheduleReconnect() {
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(connect, 3000);
+}
+
+function handleSbMessage(msg) {
+  // Streamer.bot pushes events with { event: { source, type }, data: {...} }
+  const ev = msg.event || {};
+  const data = msg.data || {};
+
+  // Custom event from your Streamer.bot action
+  if (ev.source === 'General' && ev.type === 'Custom') {
+    // Streamer.bot Custom events carry the data in `data` and the user
+    // sets `name` to identify which custom event was fired.
+    const name = data.name || data.eventName || data.event;
+    if (name === cfg.customEventName) {
+      const user = data.user || data.gifter || data.username || 'Anonymous';
+      const count = data.count || data.gifts || data.quantity || 1;
+      dbgStatus(`gift: ${user} x${count}`);
+      enqueueGift(user, count);
+    }
+    return;
+  }
+
+  // Native Kick gift sub events (if Streamer.bot is forwarding them directly)
+  if (ev.source === 'Kick' && cfg.listenNativeKickGifts) {
+    if (ev.type === 'GiftedSubscriptions' || ev.type === 'Subscription') {
+      const isGift =
+        ev.type === 'GiftedSubscriptions' ||
+        data.isGift === true ||
+        data.gifter ||
+        data.isAnonymous !== undefined;
+      if (!isGift) return;
+      const user = data.gifter?.username || data.gifter?.name || data.user?.name || 'Anonymous';
+      const count = data.giftees?.length || data.amount || data.count || 1;
+      dbgStatus(`kick gift: ${user} x${count}`);
+      enqueueGift(user, count);
+      return;
+    }
+  }
+}
+
+connect();
+
+/* ============================================================
+   DEBUG HELPERS (only visible with ?debug=1)
+   ============================================================ */
+function debugTrigger() {
+  const u = document.getElementById('dbg-user').value || 'testviewer';
+  const c = parseInt(document.getElementById('dbg-count').value) || 1;
+  enqueueGift(u, c);
+}
+function debugShiny() { FORCE_NEXT_SHINY = true; dbgStatus('next pull will be shiny'); }
+function debugReset() {
+  const u = document.getElementById('dbg-user').value || 'testviewer';
+  localStorage.removeItem(`dex:${u}`);
+  localStorage.removeItem(`credits:${u}`);
+  dbgStatus(`wiped local dex + credits for ${u}`);
+}
+function debugSetCount(n) {
+  const u = document.getElementById('dbg-user').value || 'testviewer';
+  const col = {};
+  for (let i = 1; i <= n; i++) {
+    col[i] = { id: i, shiny: false, name: KANTO_CARDS[i-1].name, at: Date.now() };
+  }
+  localStorage.setItem(`dex:${u}`, JSON.stringify(col));
+  dbgStatus(`${u} now has ${n}/151 in local dex`);
+}
+async function debugCompletion() {
+  const u = document.getElementById('dbg-user').value || 'testviewer';
+  await celebrate(u);
+}
+window.debugTrigger = debugTrigger;
+window.debugShiny = debugShiny;
+window.debugReset = debugReset;
+window.debugSetCount = debugSetCount;
+window.debugCompletion = debugCompletion;
+
+// Hotkey for testing in a real browser (not OBS): press G to fire a test gift
+window.addEventListener('keydown', (e) => {
+  if (!DEBUG) return;
+  if (e.key.toLowerCase() === 'g') debugTrigger();
+  if (e.key.toLowerCase() === 's') debugShiny();
+});
+</script>
+</body>
+</html>
