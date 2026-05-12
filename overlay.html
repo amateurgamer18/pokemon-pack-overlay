@@ -1006,9 +1006,17 @@ function connect() {
         password: cfg.streamerbotPassword,
       }));
     }
-    // Subscribe to events: General.Custom + native Kick gift events.
-    // Note: Streamer.bot v1.0+ event names are singular (GiftSubscription, not GiftedSubscriptions).
-    const events = { General: ['Custom'] };
+    // Subscribe to events:
+    //   Raw.Action      — primary path. Fires whenever any Streamer.bot action runs.
+    //                     We filter by action name so we only react to our `pokepack` action.
+    //                     This is the ONLY path that reliably works in Streamer.bot v1.0.4
+    //                     (Custom Event Trigger sub-actions don't broadcast over WS in that version).
+    //   General.Custom  — secondary fallback for newer versions that DO broadcast Custom events.
+    //   Kick.*          — tertiary fallback if you want the overlay to react to raw Kick events.
+    const events = {
+      Raw: ['Action'],
+      General: ['Custom'],
+    };
     if (cfg.listenNativeKickGifts) {
       events.Kick = ['GiftSubscription', 'Subscription', 'Resubscription', 'MassGiftSubscription'];
     }
@@ -1044,6 +1052,20 @@ function handleSbMessage(msg) {
   // Verbose logging in debug mode so we can see exactly what arrives
   if (DEBUG && ev.type) {
     console.log('[SB event]', ev.source, ev.type, data);
+  }
+
+  // ---- Raw.Action — primary path, works on Streamer.bot v1.0.4 ----
+  // Streamer.bot broadcasts a Raw.Action event every time any action runs.
+  // We filter by the action's name so we only react to our `pokepack` action.
+  if (ev.source === 'Raw' && ev.type === 'Action') {
+    if (data.name === cfg.customEventName) {
+      const args = data.arguments || {};
+      const user = args.user || args.gifter || args.username || args.userName || 'Anonymous';
+      const count = parseInt(args.count || args.gifts || args.quantity || args.giftCount || 1) || 1;
+      dbgStatus(`action ${data.name}: ${user} x${count}`);
+      enqueueGift(user, count);
+    }
+    return;
   }
 
   // ---- Custom event from your Streamer.bot Custom Event Trigger ----
