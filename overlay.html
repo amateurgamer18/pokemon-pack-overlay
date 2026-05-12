@@ -1006,10 +1006,11 @@ function connect() {
         password: cfg.streamerbotPassword,
       }));
     }
-    // Subscribe to events: custom event + Kick GiftSubscription
+    // Subscribe to events: General.Custom + native Kick gift events.
+    // Note: Streamer.bot v1.0+ event names are singular (GiftSubscription, not GiftedSubscriptions).
     const events = { General: ['Custom'] };
     if (cfg.listenNativeKickGifts) {
-      events.Kick = ['GiftedSubscriptions', 'Subscription'];
+      events.Kick = ['GiftSubscription', 'Subscription', 'Resubscription', 'MassGiftSubscription'];
     }
     ws.send(JSON.stringify({
       request: 'Subscribe',
@@ -1040,35 +1041,51 @@ function handleSbMessage(msg) {
   const ev = msg.event || {};
   const data = msg.data || {};
 
-  // Custom event from your Streamer.bot action
-  if (ev.source === 'General' && ev.type === 'Custom') {
-    // Streamer.bot Custom events carry the data in `data` and the user
-    // sets `name` to identify which custom event was fired.
+  // Verbose logging in debug mode so we can see exactly what arrives
+  if (DEBUG && ev.type) {
+    console.log('[SB event]', ev.source, ev.type, data);
+  }
+
+  // ---- Custom event from your Streamer.bot Custom Event Trigger ----
+  // In Streamer.bot v1.0+ the source for Custom events is "Misc" (not "General").
+  // We accept any source as long as the type is Custom — most robust across versions.
+  if (ev.type === 'Custom') {
     const name = data.name || data.eventName || data.event;
     if (name === cfg.customEventName) {
-      const user = data.user || data.gifter || data.username || 'Anonymous';
-      const count = data.count || data.gifts || data.quantity || 1;
-      dbgStatus(`gift: ${user} x${count}`);
+      // Args may be nested under `args` in v1.0+, or flat in older versions
+      const args = data.args || data;
+      const user = args.user || args.gifter || args.username || args.userName || 'Anonymous';
+      const count = parseInt(args.count || args.gifts || args.quantity || args.giftCount || 1) || 1;
+      dbgStatus(`custom event: ${user} x${count}`);
       enqueueGift(user, count);
     }
     return;
   }
 
-  // Native Kick gift sub events (if Streamer.bot is forwarding them directly)
+  // ---- Native Kick sub events (forwarded directly by Streamer.bot) ----
+  // All four event types count toward packs:
+  //   GiftSubscription, MassGiftSubscription → gifter gets the credit
+  //   Subscription, Resubscription            → the subscriber gets the credit (their own pack)
   if (ev.source === 'Kick' && cfg.listenNativeKickGifts) {
-    if (ev.type === 'GiftedSubscriptions' || ev.type === 'Subscription') {
-      const isGift =
-        ev.type === 'GiftedSubscriptions' ||
-        data.isGift === true ||
-        data.gifter ||
-        data.isAnonymous !== undefined;
-      if (!isGift) return;
-      const user = data.gifter?.username || data.gifter?.name || data.user?.name || 'Anonymous';
-      const count = data.giftees?.length || data.amount || data.count || 1;
-      dbgStatus(`kick gift: ${user} x${count}`);
-      enqueueGift(user, count);
-      return;
-    }
+    const accepted = [
+      'GiftSubscription', 'MassGiftSubscription',
+      'Subscription', 'Resubscription',
+      'GiftedSubscriptions' // legacy name, kept for safety
+    ];
+    if (!accepted.includes(ev.type)) return;
+
+    // Streamer.bot Kick event payloads commonly include:
+    //   userName / user_name / gifter (giver for gifts, subscriber for regular subs)
+    //   quantity / giftCount / count (number of subs gifted, or 1 for regular subs)
+    const user =
+      data.userName || data.user_name || data.gifter?.username || data.gifter?.name ||
+      data.user?.name || data.user || 'Anonymous';
+    const count = parseInt(
+      data.quantity || data.giftCount || data.count || data.giftees?.length || 1
+    ) || 1;
+    dbgStatus(`kick ${ev.type}: ${user} x${count}`);
+    enqueueGift(user, count);
+    return;
   }
 }
 
