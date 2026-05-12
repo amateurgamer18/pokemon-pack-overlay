@@ -1092,11 +1092,7 @@ let FORCE_NEXT_SHINY = false;
 function buildSceneDOM(card) {
   const tc = TYPE_COLORS[card.type] || TYPE_COLORS.Normal;
   const sprites = cardSprites(card.id);
-  // Shinies get the animated Showdown sprite (so they "come alive" on reveal);
-  // regular pulls stay on the higher-res static official artwork.
-  const artUrl = card.shiny
-    ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/shiny/${card.id}.gif`
-    : sprites.standard;
+  const artUrl = card.shiny ? sprites.shiny : sprites.standard;
   // Aura colour: type colour normally, rainbow handled via CSS keyframes for shinies.
   const auraColor = tc.bg;
   // Optional custom card-back image URL from config (kept blank by default to
@@ -1229,12 +1225,8 @@ async function playPack(gifter, card, isNew) {
   if (card.shiny) scene.classList.add('shiny-pull');
 
   // Preload art so the reveal doesn't show a blank face
-  // (matches the URL logic used in buildSceneDOM)
   const sprites = cardSprites(card.id);
-  const previewUrl = card.shiny
-    ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/shiny/${card.id}.gif`
-    : sprites.standard;
-  await preload(previewUrl);
+  await preload(card.shiny ? sprites.shiny : sprites.standard);
 
   // Show NEW badge if applicable (every pull is new since no dupes)
   if (isNew) scene.querySelector('.new-badge').classList.add('show');
