@@ -1160,6 +1160,26 @@
   }
   #complete-overlay .who { color: #ffcb05; font-weight: 900; }
 
+  /* ---------- Hard-coded credit (subtle bottom-right) ---------- */
+  #overlay-credit {
+    position: fixed;
+    bottom: 10px;
+    right: 14px;
+    color: rgba(255, 255, 255, .35);
+    font-family: 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, .8),
+      0 0 4px rgba(0, 0, 0, .6);
+    pointer-events: none;
+    user-select: none;
+    z-index: 5;
+    white-space: nowrap;
+  }
+
   /* ---------- Debug panel (only with ?debug=1) ---------- */
   #debug {
     position: fixed;
@@ -1205,6 +1225,8 @@
 <div id="banner"></div>
 
 <div id="stage"></div>
+
+<div id="overlay-credit">kick.com/amateurgamer</div>
 
 <div id="complete-overlay">
   <div class="big">GOTTA CATCH 'EM ALL!</div>
