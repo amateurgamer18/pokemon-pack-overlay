@@ -18,9 +18,10 @@ window.STREAM_CONFIG = {
   // The action should pass two arguments: user (gifter name) and count (qty).
   customEventName: 'pokepack',
 
-  // Also accept native Kick gift sub events if Streamer.bot forwards them
-  // directly (belt-and-braces — no harm leaving on).
-  listenNativeKickGifts: true,
+  // Native Kick events are also broadcast by Streamer.bot for real (non-test) gift subs.
+  // Keep this OFF — the Raw.Action path (via your pokepack action) already catches every
+  // gift, so enabling this would double-count credits on real subs.
+  listenNativeKickGifts: false,
 
   // ---- Shiny odds — 1 in N ----
   shinyOdds: 100,
