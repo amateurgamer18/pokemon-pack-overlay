@@ -7,57 +7,88 @@
 <style>
   :root {
     --gold: #ffcb05;
+    --gold-dim: #c79500;
     --navy: #2a3b8f;
     --navy-dark: #1a2966;
+    --navy-darker: #0f1a3d;
     --red: #ee1515;
-    --bg: #0f1428;
+    --red-dim: #a50f0f;
+    --bg: #0a0e1f;
+    --bg-card: #131938;
+    --bg-card-hi: #1c2347;
+    --line: rgba(255,255,255,.08);
+    --text: #e8ebf5;
+    --text-dim: #8b92a8;
+    --shiny-glow: 0 0 24px rgba(255,0,255,.5);
+    --legend-glow: 0 0 24px rgba(255,215,0,.6);
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
     padding: 0;
     background:
-      radial-gradient(circle at 20% 10%, rgba(255,203,5,.08) 0%, transparent 40%),
-      radial-gradient(circle at 80% 80%, rgba(42,59,143,.4) 0%, transparent 50%),
+      radial-gradient(circle at 15% 10%, rgba(238,21,21,.08) 0%, transparent 35%),
+      radial-gradient(circle at 85% 90%, rgba(42,59,143,.3) 0%, transparent 45%),
+      radial-gradient(circle at 50% 50%, rgba(255,203,5,.04) 0%, transparent 60%),
       var(--bg);
-    color: #fff;
-    font-family: 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text);
+    font-family: 'Inter', 'Trebuchet MS', 'Helvetica Neue', system-ui, sans-serif;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
+
+  /* ===== HEADER ===== */
   header {
-    background: linear-gradient(180deg, var(--red) 0%, #a50f0f 100%);
-    padding: 16px 20px;
-    border-bottom: 4px solid var(--gold);
-    box-shadow: 0 4px 16px rgba(0,0,0,.4);
+    background:
+      linear-gradient(180deg, rgba(238,21,21,.95) 0%, rgba(165,15,15,.95) 100%);
+    backdrop-filter: blur(20px);
+    padding: 18px 24px;
+    border-bottom: 3px solid var(--gold);
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    position: sticky;
+    top: 0;
+    z-index: 50;
   }
   header .wrap {
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 18px;
     flex-wrap: wrap;
   }
-  header h1 {
+  header .brand h1 {
     margin: 0;
     color: var(--gold);
-    font-family: 'Impact', sans-serif;
-    font-size: 36px;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 32px;
     letter-spacing: 2px;
+    line-height: 1;
     text-shadow:
       -2px -2px 0 var(--navy), 2px -2px 0 var(--navy),
       -2px 2px 0 var(--navy), 2px 2px 0 var(--navy),
-      0 6px 0 var(--navy-dark);
+      0 5px 0 var(--navy-dark);
+  }
+  header .brand .sub {
+    color: rgba(255,255,255,.85);
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 4px;
   }
   header .who {
     color: #fff;
-    font-size: 18px;
-    background: rgba(0,0,0,.3);
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: 2px solid var(--gold);
+    font-size: 14px;
+    background: rgba(0,0,0,.35);
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--gold);
   }
-  header .who strong { color: var(--gold); }
+  header .who strong {
+    color: var(--gold);
+    font-size: 16px;
+    margin-left: 4px;
+  }
   header .controls {
     margin-left: auto;
     display: flex;
@@ -66,117 +97,247 @@
   }
   header input {
     background: rgba(0,0,0,.4);
-    border: 2px solid var(--gold);
-    border-radius: 6px;
+    border: 1.5px solid rgba(255,203,5,.5);
+    border-radius: 10px;
     color: #fff;
-    padding: 8px 12px;
+    padding: 9px 14px;
     font-size: 14px;
     width: 200px;
+    font-family: inherit;
+    transition: border-color .2s, background .2s;
+  }
+  header input:focus {
+    outline: none;
+    border-color: var(--gold);
+    background: rgba(0,0,0,.55);
   }
   header button {
     background: var(--gold);
-    color: var(--navy);
+    color: var(--navy-dark);
     border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: bold;
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-weight: 700;
     cursor: pointer;
     font-size: 14px;
+    font-family: inherit;
+    transition: transform .12s, background .2s;
   }
-  header button:hover { background: #f6a800; }
+  header button:hover { background: #ffd633; transform: translateY(-1px); }
+  header button:active { transform: translateY(0); }
 
-  main { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+  /* ===== MAIN ===== */
+  main { max-width: 1280px; margin: 0 auto; padding: 28px 24px; }
 
-  /* ===== Progress bar ===== */
+  /* ===== PROGRESS BAR ===== */
   .progress {
-    background: rgba(0,0,0,.3);
-    border: 2px solid var(--gold);
-    border-radius: 12px;
-    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hi));
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 26px;
     margin-bottom: 28px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .progress::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,203,5,.04), transparent);
+    background-size: 200% 100%;
+    animation: progressGlow 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes progressGlow {
+    0%, 100% { background-position: -100% 0; }
+    50%      { background-position: 100% 0; }
   }
   .progress .row {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
     flex-wrap: wrap;
+    position: relative;
   }
   .progress .count {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 900;
     color: var(--gold);
     font-family: 'Impact', sans-serif;
+    line-height: 1;
+    letter-spacing: 1px;
   }
-  .progress .count .total { color: rgba(255,255,255,.5); font-size: 22px; }
+  .progress .count .total {
+    color: var(--text-dim);
+    font-size: 22px;
+    font-weight: 700;
+  }
   .progress .bar {
     flex: 1;
-    height: 18px;
-    background: rgba(0,0,0,.4);
-    border-radius: 9px;
+    height: 14px;
+    background: rgba(0,0,0,.5);
+    border-radius: 8px;
     overflow: hidden;
-    border: 1px solid rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.08);
     min-width: 240px;
+    position: relative;
   }
   .progress .fill {
     height: 100%;
     background: linear-gradient(90deg, var(--red) 0%, var(--gold) 100%);
     width: 0%;
-    transition: width 1.2s ease-out;
-    box-shadow: 0 0 12px var(--gold);
+    transition: width 1.4s cubic-bezier(.16,1,.3,1);
+    box-shadow: 0 0 12px rgba(255,203,5,.6);
+    border-radius: 7px;
   }
   .progress .pct {
-    font-size: 20px;
-    font-weight: bold;
+    font-size: 22px;
+    font-weight: 800;
     color: #fff;
     min-width: 60px;
     text-align: right;
   }
   .progress .stats {
-    margin-top: 12px;
+    margin-top: 14px;
     display: flex;
-    gap: 20px;
-    font-size: 14px;
-    color: rgba(255,255,255,.8);
+    gap: 18px;
+    font-size: 13px;
+    color: var(--text-dim);
+    flex-wrap: wrap;
+    position: relative;
+  }
+  .progress .stats .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,.35);
+    padding: 5px 11px;
+    border-radius: 100px;
+    border: 1px solid var(--line);
+  }
+  .progress .stats .chip strong { color: var(--text); font-weight: 700; }
+  .progress .stats .chip.shiny strong { color: #ff66ff; }
+  .progress .stats .chip.legend strong { color: #ffd700; }
+  .progress .stats .chip.latest strong { color: var(--gold); }
+
+  /* ===== FILTER TABS ===== */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
   }
-  .progress .stats .shiny-count { color: #ff66ff; font-weight: bold; }
+  .filter {
+    background: var(--bg-card);
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 8px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: .3px;
+    transition: all .15s;
+  }
+  .filter:hover { color: var(--text); border-color: rgba(255,203,5,.4); }
+  .filter.active {
+    background: var(--gold);
+    color: var(--navy-dark);
+    border-color: var(--gold);
+    box-shadow: 0 4px 14px rgba(255,203,5,.35);
+  }
+  .filter .count-badge {
+    background: rgba(0,0,0,.15);
+    padding: 1px 8px;
+    border-radius: 100px;
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .filter.active .count-badge { background: rgba(0,0,0,.2); }
 
-  /* ===== Card grid ===== */
+  /* ===== POKEMON GRID ===== */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
   }
   .slot {
-    background: rgba(0,0,0,.3);
-    border: 2px solid rgba(255,255,255,.1);
-    border-radius: 10px;
-    padding: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px;
     text-align: center;
     position: relative;
-    transition: transform .15s, border-color .2s;
     aspect-ratio: 3/4;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     overflow: hidden;
+    cursor: pointer;
+    transition: transform .18s cubic-bezier(.16,1,.3,1),
+                border-color .2s,
+                box-shadow .2s,
+                background .2s;
   }
-  .slot:hover { transform: translateY(-2px); }
+  .slot::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--type-color, var(--gold)), transparent);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .slot:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,203,5,.4);
+    box-shadow: 0 12px 28px rgba(0,0,0,.45);
+    background: var(--bg-card-hi);
+  }
+  .slot:hover::before { opacity: 1; }
   .slot.owned {
-    background: linear-gradient(180deg, rgba(255,203,5,.15) 0%, rgba(42,59,143,.3) 100%);
-    border-color: var(--gold);
+    background: linear-gradient(180deg,
+      rgba(255,203,5,.06) 0%,
+      var(--bg-card) 50%);
+    border-color: rgba(255,203,5,.25);
   }
   .slot.shiny {
-    border-color: #ff66ff;
-    background:
-      conic-gradient(from 0deg, rgba(255,0,255,.15), rgba(255,150,0,.15), rgba(255,255,0,.15), rgba(0,255,150,.15), rgba(0,200,255,.15), rgba(255,0,255,.15));
-    animation: shinyRot 8s linear infinite;
+    border-color: rgba(255,0,255,.5);
+    box-shadow: 0 0 16px rgba(255,0,255,.15);
   }
-  @keyframes shinyRot { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+  .slot.shiny::before {
+    background: linear-gradient(90deg, #ff00ff, #ffaa00, #00ddff, #ff00ff);
+    background-size: 200% 100%;
+    opacity: 1;
+    animation: shinyShimmer 3s linear infinite;
+  }
+  @keyframes shinyShimmer {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+  .slot.legendary {
+    border-color: rgba(255,215,0,.5);
+    box-shadow: 0 0 16px rgba(255,215,0,.2);
+  }
+  .slot.legendary::before {
+    background: linear-gradient(90deg, #b8860b, #ffd700, #fff6b8, #ffd700, #b8860b);
+    background-size: 200% 100%;
+    opacity: 1;
+    animation: shinyShimmer 4s linear infinite;
+  }
+  .slot.legendary.shiny {
+    border-color: rgba(255,215,0,.8);
+    box-shadow: 0 0 24px rgba(255,215,0,.4), 0 0 24px rgba(255,0,255,.2);
+  }
   .slot .num {
     font-size: 11px;
-    color: rgba(255,255,255,.5);
-    font-weight: bold;
+    color: var(--text-dim);
+    font-weight: 700;
+    letter-spacing: .5px;
+    z-index: 2;
   }
   .slot.owned .num { color: var(--gold); }
   .slot .art {
@@ -184,151 +345,445 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 4px 0;
+    padding: 6px 0;
   }
   .slot img {
     max-width: 100%;
     max-height: 100%;
     image-rendering: auto;
-    transition: filter .3s;
+    transition: filter .3s, transform .25s;
   }
+  .slot:hover img { transform: scale(1.08); }
   .slot:not(.owned) img {
-    filter: brightness(0) invert(.2);
-    opacity: .5;
+    filter: brightness(0) invert(0.12);
+    opacity: .6;
   }
   .slot .name {
-    font-size: 12px;
-    font-weight: bold;
-    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
     line-height: 1.2;
+    margin-top: 4px;
+    z-index: 2;
   }
   .slot:not(.owned) .name {
-    color: rgba(255,255,255,.3);
+    color: var(--text-dim);
+    font-weight: 600;
   }
-  .slot .shiny-tag {
+  .slot .badge-row {
     position: absolute;
-    top: 4px; right: 4px;
-    background: linear-gradient(135deg, #ff00ff, #ffaa00);
+    top: 8px; right: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 3;
+  }
+  .badge {
+    background: rgba(0,0,0,.7);
     color: #fff;
     font-size: 9px;
-    font-weight: bold;
-    padding: 2px 6px;
-    border-radius: 8px;
-    box-shadow: 0 0 6px rgba(255,0,255,.6);
-  }
-
-  /* ===== Filter tabs ===== */
-  .filters {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .filter {
-    background: rgba(0,0,0,.3);
-    color: #fff;
-    border: 2px solid rgba(255,255,255,.15);
+    font-weight: 800;
+    padding: 2px 7px;
     border-radius: 100px;
-    padding: 6px 14px;
-    font-size: 13px;
-    cursor: pointer;
-    font-weight: bold;
+    letter-spacing: .8px;
+    backdrop-filter: blur(4px);
   }
-  .filter.active {
-    background: var(--gold);
-    color: var(--navy);
-    border-color: var(--gold);
+  .badge.shiny {
+    background: linear-gradient(135deg, #ff00ff, #ffaa00);
+    box-shadow: 0 0 8px rgba(255,0,255,.6);
+  }
+  .badge.legendary {
+    background: linear-gradient(135deg, #d4a82c, #fff6b8, #d4a82c);
+    color: #3a2400;
+    box-shadow: 0 0 8px rgba(255,215,0,.6);
   }
 
-  /* ===== Completers / Hall of Fame ===== */
-  .hof {
-    margin-top: 40px;
-    background: linear-gradient(180deg, rgba(255,203,5,.1) 0%, rgba(42,59,143,.2) 100%);
-    border: 2px solid var(--gold);
-    border-radius: 12px;
-    padding: 20px;
-  }
-  .hof h2 {
-    margin: 0 0 12px 0;
-    color: var(--gold);
-    font-family: 'Impact', sans-serif;
-    font-size: 24px;
-    letter-spacing: 1px;
-  }
-  .hof ol { padding-left: 20px; margin: 0; }
-  .hof li {
-    padding: 6px 0;
-    color: #fff;
-    font-size: 16px;
-    border-bottom: 1px solid rgba(255,255,255,.05);
-  }
-  .hof li:last-child { border-bottom: none; }
-  .hof li .user { color: var(--gold); font-weight: bold; }
-  .hof li .date { color: rgba(255,255,255,.5); font-size: 13px; margin-left: 10px; }
-  .hof .empty { color: rgba(255,255,255,.5); font-style: italic; }
-
-  /* ===== Empty state ===== */
+  /* ===== EMPTY STATE ===== */
   .empty-state {
+    grid-column: 1/-1;
     text-align: center;
     padding: 60px 20px;
-    color: rgba(255,255,255,.6);
+    color: var(--text-dim);
   }
-  .empty-state h2 { color: var(--gold); }
+  .empty-state h2 {
+    color: var(--gold);
+    font-family: 'Impact', sans-serif;
+    letter-spacing: 1px;
+    margin: 0 0 8px;
+  }
 
-  footer {
-    text-align: center;
-    padding: 30px 20px 60px;
-    color: rgba(255,255,255,.4);
+  /* ===== HALL OF FAME ===== */
+  .hof {
+    margin-top: 48px;
+    background:
+      linear-gradient(135deg,
+        rgba(255,203,5,.08) 0%,
+        var(--bg-card) 60%);
+    border: 1px solid rgba(255,203,5,.3);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hof::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,203,5,.15) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hof h2 {
+    margin: 0 0 16px 0;
+    color: var(--gold);
+    font-family: 'Impact', sans-serif;
+    font-size: 26px;
+    letter-spacing: 1.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hof ol { padding-left: 22px; margin: 0; list-style: decimal; }
+  .hof li {
+    padding: 10px 0;
+    color: #fff;
+    font-size: 15px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .hof li:last-child { border-bottom: none; }
+  .hof li .user {
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .hof li .date {
+    color: var(--text-dim);
     font-size: 13px;
   }
-  footer a { color: var(--gold); text-decoration: none; }
+  .hof .empty {
+    color: var(--text-dim);
+    font-style: italic;
+    list-style: none;
+    padding: 8px 0;
+    display: block;
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    text-align: center;
+    padding: 32px 20px 60px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  footer a {
+    color: var(--gold);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color .2s;
+  }
+  footer a:hover { color: #ffd633; }
+
+  /* ============================================================
+     MODAL — Pokemon detail view
+     ============================================================ */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 8, 22, .75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .modal {
+    background: linear-gradient(160deg, var(--bg-card-hi) 0%, var(--bg-card) 100%);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    max-width: 720px;
+    width: 100%;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    transform: scale(.92) translateY(20px);
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:
+      0 30px 80px rgba(0,0,0,.6),
+      0 0 0 1px rgba(255,255,255,.03);
+    position: relative;
+  }
+  .modal-backdrop.show .modal {
+    transform: scale(1) translateY(0);
+  }
+  .modal-close {
+    position: absolute;
+    top: 18px; right: 18px;
+    width: 36px; height: 36px;
+    background: rgba(0,0,0,.4);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--text);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .2s, transform .15s;
+  }
+  .modal-close:hover {
+    background: var(--red);
+    transform: rotate(90deg);
+  }
+  .modal-hero {
+    padding: 40px 40px 20px;
+    position: relative;
+    text-align: center;
+    background: radial-gradient(circle at 50% 40%,
+      var(--type-color-light, rgba(255,203,5,.15)) 0%,
+      transparent 60%);
+  }
+  .modal-hero .modal-num {
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin: 0;
+  }
+  .modal-hero .modal-name {
+    color: var(--text);
+    font-family: 'Impact', sans-serif;
+    font-size: 44px;
+    letter-spacing: 1px;
+    margin: 6px 0 12px;
+    line-height: 1;
+  }
+  .modal-hero .modal-name.shiny {
+    background: linear-gradient(90deg, #ff00ff, #ffaa00, #00ddff, #ff00ff);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    animation: shinyShimmer 2s linear infinite;
+  }
+  .modal-hero .modal-name.legendary {
+    background: linear-gradient(180deg, #fff7c8 0%, #ffd700 50%, #b8860b 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 16px rgba(255,215,0,.4);
+  }
+  .modal-types {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 14px 0;
+  }
+  .type-pill {
+    padding: 6px 18px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  }
+  .modal-art-wrap {
+    width: 240px;
+    height: 240px;
+    margin: 8px auto 16px;
+    background: rgba(0,0,0,.25);
+    border-radius: 24px;
+    border: 2px solid var(--type-color, rgba(255,255,255,.1));
+    box-shadow:
+      0 12px 32px rgba(0,0,0,.5),
+      0 0 60px var(--type-glow, rgba(255,203,5,.2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .modal-art-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%,
+      var(--type-color-light, rgba(255,255,255,.08)) 0%,
+      transparent 65%);
+  }
+  .modal-art-wrap img {
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+    position: relative;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,.5));
+  }
+  .modal-art-wrap.locked img {
+    filter: brightness(0) invert(.15);
+    opacity: .7;
+  }
+  .modal-body {
+    padding: 0 40px 36px;
+  }
+  .modal-description {
+    background: rgba(0,0,0,.25);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 22px;
+    line-height: 1.65;
+    font-size: 15px;
+    color: var(--text);
+    margin-bottom: 18px;
+    font-style: italic;
+  }
+  .modal-description.locked {
+    text-align: center;
+    color: var(--text-dim);
+    font-style: normal;
+  }
+  .modal-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .stat-cell {
+    background: rgba(0,0,0,.25);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .stat-cell .lbl {
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .stat-cell .val {
+    color: var(--text);
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .stat-cell .val.gold { color: var(--gold); }
+  .modal-loading {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 14px;
+    font-style: italic;
+  }
+
+  /* ===== Type colors (for type pills + accents) ===== */
+  .t-Normal   { background: #A8A878; color: #fff; }
+  .t-Fire     { background: #F08030; color: #fff; }
+  .t-Water    { background: #6890F0; color: #fff; }
+  .t-Electric { background: #F8D030; color: #3a2b00; }
+  .t-Grass    { background: #78C850; color: #fff; }
+  .t-Ice      { background: #98D8D8; color: #1a3a3a; }
+  .t-Fighting { background: #C03028; color: #fff; }
+  .t-Poison   { background: #A040A0; color: #fff; }
+  .t-Ground   { background: #E0C068; color: #3a2a00; }
+  .t-Flying   { background: #A890F0; color: #fff; }
+  .t-Psychic  { background: #F85888; color: #fff; }
+  .t-Bug      { background: #A8B820; color: #fff; }
+  .t-Rock     { background: #B8A038; color: #fff; }
+  .t-Ghost    { background: #705898; color: #fff; }
+  .t-Dragon   { background: #7038F8; color: #fff; }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 640px) {
+    header .brand h1 { font-size: 24px; }
+    header input { width: 140px; }
+    .modal-hero { padding: 30px 24px 14px; }
+    .modal-body { padding: 0 24px 28px; }
+    .modal-hero .modal-name { font-size: 32px; }
+    .modal-art-wrap { width: 180px; height: 180px; }
+  }
 </style>
 </head>
 <body>
 
 <header>
   <div class="wrap">
-    <h1>KANTO PokéDEX</h1>
-    <div class="who">Viewer: <strong id="who">…</strong></div>
+    <div class="brand">
+      <h1>KANTO PokéDex</h1>
+      <div class="sub">amateurgamer.kick</div>
+    </div>
+    <div class="who">Viewer:<strong id="who">…</strong></div>
     <div class="controls">
-      <input id="user-input" placeholder="Enter Kick username">
+      <input id="user-input" placeholder="Look up viewer">
       <button onclick="changeUser()">View</button>
     </div>
   </div>
 </header>
 
 <main>
-  <div class="progress">
+  <section class="progress">
     <div class="row">
       <div class="count"><span id="owned-count">0</span><span class="total">/151</span></div>
       <div class="bar"><div class="fill" id="fill"></div></div>
       <div class="pct" id="pct">0%</div>
     </div>
     <div class="stats">
-      <span>Standard: <strong id="std-count">0</strong></span>
-      <span>Shiny: <strong class="shiny-count" id="shiny-count">0</strong> ✨</span>
-      <span id="latest"></span>
+      <span class="chip">Standard: <strong id="std-count">0</strong></span>
+      <span class="chip shiny">Shiny: <strong id="shiny-count">0</strong> ✦</span>
+      <span class="chip legend">Legendary: <strong id="legend-count">0</strong> ⚜</span>
+      <span class="chip latest" id="latest"></span>
     </div>
-  </div>
+  </section>
 
-  <div class="filters">
-    <button class="filter active" data-filter="all">All</button>
-    <button class="filter" data-filter="owned">Caught</button>
-    <button class="filter" data-filter="missing">Missing</button>
-    <button class="filter" data-filter="shiny">Shinies</button>
+  <div class="filters" id="filters">
+    <button class="filter active" data-filter="all">All<span class="count-badge" id="badge-all">151</span></button>
+    <button class="filter" data-filter="owned">Caught<span class="count-badge" id="badge-owned">0</span></button>
+    <button class="filter" data-filter="missing">Missing<span class="count-badge" id="badge-missing">151</span></button>
+    <button class="filter" data-filter="shiny">Shinies<span class="count-badge" id="badge-shiny">0</span></button>
+    <button class="filter" data-filter="legendary">Legendary<span class="count-badge" id="badge-legendary">0</span></button>
   </div>
 
   <div class="grid" id="grid"></div>
 
-  <div class="hof">
-    <h2>🏆 Hall of Fame — Completed Pokédex</h2>
-    <ol id="hof-list"><li class="empty">No one has completed it yet. Will you be first?</li></ol>
-  </div>
+  <section class="hof">
+    <h2>🏆 Hall of Fame</h2>
+    <ol id="hof-list"><li class="empty">No one has completed the dex yet. First completer wins the prize.</li></ol>
+  </section>
 </main>
 
 <footer>
-  Watching <a href="https://kick.com/amateurgamer" target="_blank">kick.com/amateurgamer</a> · Gift subs to pull cards
+  Watching <a href="https://kick.com/amateurgamer" target="_blank">kick.com/amateurgamer</a> · Gift subs to pull cards · Every 2 gifts = 1 pack
 </footer>
+
+<!-- ============== MODAL ============== -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
+  <div class="modal" id="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
+    <div class="modal-hero">
+      <p class="modal-num" id="m-num">No. 000</p>
+      <h2 class="modal-name" id="m-name">—</h2>
+      <div class="modal-types" id="m-types"></div>
+      <div class="modal-art-wrap" id="m-art-wrap">
+        <img id="m-art" src="" alt="">
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-description" id="m-desc">
+        <div class="modal-loading">Loading Pokédex entry…</div>
+      </div>
+      <div class="modal-stats" id="m-stats"></div>
+    </div>
+  </div>
+</div>
 
 <script src="cards.js"></script>
 <script src="config.js"></script>
@@ -340,19 +795,21 @@ let currentUser = Q.get('viewer') || Q.get('user') || localStorage.getItem('last
 let currentFilter = 'all';
 let collection = {};
 
+// Lightweight cache for PokeAPI species flavor text (avoid hammering API)
+const descriptionCache = {};
+
 document.getElementById('who').textContent = currentUser;
 document.getElementById('user-input').value = currentUser;
 localStorage.setItem('lastViewer', currentUser);
 
+/* ============================================================
+   DATA FETCHING
+   ============================================================ */
 async function fetchCollection(user) {
-  // Try firebase first, fall back to localStorage
   if (cfg.firebaseUrl) {
     try {
       const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(user)}.json`);
-      if (r.ok) {
-        const data = await r.json();
-        return data || {};
-      }
+      if (r.ok) return (await r.json()) || {};
     } catch (e) { console.warn('firebase read failed:', e); }
   }
   return JSON.parse(localStorage.getItem(`dex:${user}`) || '{}');
@@ -372,6 +829,42 @@ async function fetchCompleters() {
     .sort((a, b) => a.at - b.at);
 }
 
+async function fetchPokemonDescription(id) {
+  if (descriptionCache[id]) return descriptionCache[id];
+  try {
+    const r = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}/`);
+    if (!r.ok) throw new Error('PokeAPI error');
+    const data = await r.json();
+    // Prefer Red/Blue era flavor text for that authentic Gen 1 vibe
+    const preferredVersions = ['red', 'blue', 'yellow', 'firered', 'leafgreen'];
+    let entry = null;
+    for (const v of preferredVersions) {
+      entry = data.flavor_text_entries.find(e =>
+        e.language.name === 'en' && e.version.name === v
+      );
+      if (entry) break;
+    }
+    // Fallback: first English entry
+    if (!entry) {
+      entry = data.flavor_text_entries.find(e => e.language.name === 'en');
+    }
+    const text = (entry?.flavor_text || '')
+      .replace(/[\f\n\r]+/g, ' ')      // remove form-feeds / newlines
+      .replace(/\s+/g, ' ')
+      .trim();
+    const genus = data.genera?.find(g => g.language.name === 'en')?.genus || '';
+    const result = { text: text || 'No Pokédex entry available.', genus };
+    descriptionCache[id] = result;
+    return result;
+  } catch (e) {
+    console.warn('PokeAPI fetch failed for', id, e);
+    return { text: 'Pokédex entry temporarily unavailable.', genus: '' };
+  }
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 function ownedIds(col) {
   const s = new Set();
   for (const k of Object.keys(col)) {
@@ -380,7 +873,6 @@ function ownedIds(col) {
   }
   return s;
 }
-
 function shinyIds(col) {
   const s = new Set();
   for (const k of Object.keys(col)) {
@@ -389,7 +881,6 @@ function shinyIds(col) {
   }
   return s;
 }
-
 function latestPull(col) {
   let latest = null;
   for (const k of Object.keys(col)) {
@@ -398,45 +889,86 @@ function latestPull(col) {
   }
   return latest;
 }
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function ownedEntryFor(id) {
+  // Returns the stored entry for a given Pokemon id (any variant)
+  for (const k of Object.keys(collection)) {
+    const v = collection[k];
+    if (v && v.id === id) return v;
+  }
+  return null;
+}
 
+/* ============================================================
+   RENDER
+   ============================================================ */
 function render() {
   const owned = ownedIds(collection);
   const shinies = shinyIds(collection);
+  const legendariesCaught = KANTO_CARDS.filter(c => c.legendary && owned.has(c.id));
+
   document.getElementById('owned-count').textContent = owned.size;
   document.getElementById('std-count').textContent = owned.size - shinies.size;
   document.getElementById('shiny-count').textContent = shinies.size;
+  document.getElementById('legend-count').textContent = legendariesCaught.length;
   const pct = Math.round((owned.size / 151) * 100);
   document.getElementById('pct').textContent = pct + '%';
   document.getElementById('fill').style.width = pct + '%';
+
+  // Filter count badges
+  document.getElementById('badge-all').textContent = 151;
+  document.getElementById('badge-owned').textContent = owned.size;
+  document.getElementById('badge-missing').textContent = 151 - owned.size;
+  document.getElementById('badge-shiny').textContent = shinies.size;
+  document.getElementById('badge-legendary').textContent = legendariesCaught.length;
+
   const latest = latestPull(collection);
-  document.getElementById('latest').textContent = latest
-    ? `· Latest: ${latest.name}${latest.shiny ? ' ✨' : ''}`
+  document.getElementById('latest').innerHTML = latest
+    ? `Latest: <strong>${escapeHtml(latest.name)}${latest.shiny ? ' ✦' : ''}</strong>`
     : '';
 
+  // Card grid
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   let visible = 0;
   for (const c of KANTO_CARDS) {
     const isOwned = owned.has(c.id);
     const isShiny = shinies.has(c.id);
+    const isLegend = c.legendary;
     if (currentFilter === 'owned' && !isOwned) continue;
     if (currentFilter === 'missing' && isOwned) continue;
     if (currentFilter === 'shiny' && !isShiny) continue;
+    if (currentFilter === 'legendary' && !isLegend) continue;
     visible++;
     const slot = document.createElement('div');
-    slot.className = 'slot' + (isOwned ? ' owned' : '') + (isShiny ? ' shiny' : '');
+    slot.className = 'slot'
+      + (isOwned ? ' owned' : '')
+      + (isShiny ? ' shiny' : '')
+      + (isLegend ? ' legendary' : '');
+    const typeColor = TYPE_COLORS[c.type]?.bg || '#888';
+    slot.style.setProperty('--type-color', typeColor);
     const sprites = cardSprites(c.id);
     const art = isShiny ? sprites.shiny : sprites.standard;
     slot.innerHTML = `
       <div class="num">#${String(c.id).padStart(3,'0')}</div>
-      <div class="art"><img src="${art}" alt="${c.name}" loading="lazy"></div>
-      <div class="name">${isOwned ? c.name : '???'}</div>
-      ${isShiny ? '<div class="shiny-tag">SHINY</div>' : ''}
+      <div class="art"><img src="${art}" alt="${escapeHtml(c.name)}" loading="lazy"></div>
+      <div class="name">${isOwned ? escapeHtml(c.name) : '???'}</div>
+      <div class="badge-row">
+        ${isLegend ? '<div class="badge legendary">LEGEND</div>' : ''}
+        ${isShiny ? '<div class="badge shiny">SHINY</div>' : ''}
+      </div>
     `;
+    slot.onclick = () => openModal(c);
     grid.appendChild(slot);
   }
   if (visible === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h2>Nothing here yet</h2><p>Gift subs on stream to start your collection!</p></div>`;
+    grid.innerHTML = `<div class="empty-state">
+      <h2>Nothing here yet</h2>
+      <p>Try a different filter, or gift subs on stream to start the collection.</p>
+    </div>`;
   }
 }
 
@@ -444,7 +976,7 @@ async function renderCompleters() {
   const list = await fetchCompleters();
   const el = document.getElementById('hof-list');
   if (!list || list.length === 0) {
-    el.innerHTML = '<li class="empty">No one has completed it yet. Will you be first?</li>';
+    el.innerHTML = '<li class="empty">No one has completed the dex yet. First completer wins the prize.</li>';
     return;
   }
   el.innerHTML = list.map(c => `
@@ -452,10 +984,102 @@ async function renderCompleters() {
   `).join('');
 }
 
-function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ============================================================
+   MODAL — Pokemon detail view
+   ============================================================ */
+async function openModal(card) {
+  const isOwned = ownedIds(collection).has(card.id);
+  const entry = ownedEntryFor(card.id);
+  const isShinyOwned = entry && entry.shiny;
+  const backdrop = document.getElementById('modal-backdrop');
+  const modal = document.getElementById('modal');
+  const typeColor = TYPE_COLORS[card.type]?.bg || '#888';
+  const typeColorLight = typeColor + '33';   // append alpha hex
+  const typeGlow = typeColor + '55';
+
+  // Set CSS variables for type-tinted modal
+  modal.style.setProperty('--type-color', typeColor);
+  modal.style.setProperty('--type-color-light', typeColorLight);
+  modal.style.setProperty('--type-glow', typeGlow);
+
+  // Header
+  document.getElementById('m-num').textContent = `No. ${String(card.id).padStart(3,'0')} / 151 — Kanto`;
+  const nameEl = document.getElementById('m-name');
+  nameEl.textContent = isOwned ? card.name : '???';
+  nameEl.className = 'modal-name'
+    + (isShinyOwned ? ' shiny' : '')
+    + (card.legendary && isOwned ? ' legendary' : '');
+
+  // Types — currently single-type from cards.js. Easy to expand later.
+  document.getElementById('m-types').innerHTML = isOwned
+    ? `<span class="type-pill t-${card.type}">${card.type}</span>`
+    : '<span class="type-pill" style="background:#333;color:#888;">??? TYPE</span>';
+
+  // Art
+  const sprites = cardSprites(card.id);
+  const artUrl = isShinyOwned ? sprites.shiny : sprites.standard;
+  const artWrap = document.getElementById('m-art-wrap');
+  const artImg = document.getElementById('m-art');
+  artImg.src = artUrl;
+  artImg.alt = isOwned ? card.name : 'Unknown Pokemon';
+  artWrap.classList.toggle('locked', !isOwned);
+
+  // Description
+  const descEl = document.getElementById('m-desc');
+  if (!isOwned) {
+    descEl.className = 'modal-description locked';
+    descEl.innerHTML = '🔒 Catch this Pokémon to read its Pokédex entry.';
+  } else {
+    descEl.className = 'modal-description';
+    descEl.innerHTML = '<div class="modal-loading">Loading Pokédex entry…</div>';
+  }
+
+  // Stats
+  const statsEl = document.getElementById('m-stats');
+  if (isOwned) {
+    const caughtDate = entry?.at ? new Date(entry.at).toLocaleDateString() : '—';
+    const rarityLabel = card.legendary
+      ? '<span class="val gold">Legendary</span>'
+      : isShinyOwned
+        ? '<span class="val" style="color:#ff66ff;">Shiny</span>'
+        : '<span class="val">Standard</span>';
+    statsEl.innerHTML = `
+      <div class="stat-cell"><div class="lbl">HP</div><div class="val">${card.hp}</div></div>
+      <div class="stat-cell"><div class="lbl">Type</div><div class="val">${card.type}</div></div>
+      <div class="stat-cell"><div class="lbl">Rarity</div>${rarityLabel}</div>
+      <div class="stat-cell"><div class="lbl">First Caught</div><div class="val">${caughtDate}</div></div>
+    `;
+  } else {
+    statsEl.innerHTML = `
+      <div class="stat-cell"><div class="lbl">Status</div><div class="val" style="color:var(--text-dim);">Not yet caught</div></div>
+      <div class="stat-cell"><div class="lbl">Pokédex #</div><div class="val">${String(card.id).padStart(3,'0')}</div></div>
+    `;
+  }
+
+  // Show modal
+  backdrop.classList.add('show');
+  document.body.style.overflow = 'hidden';
+
+  // Fetch flavor text for owned Pokemon
+  if (isOwned) {
+    const { text, genus } = await fetchPokemonDescription(card.id);
+    const genusLine = genus ? `<div style="color:var(--text-dim);font-style:normal;font-size:13px;margin-bottom:8px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">${escapeHtml(genus)}</div>` : '';
+    descEl.innerHTML = genusLine + escapeHtml(text);
+  }
 }
 
+function closeModal(e) {
+  if (e && e.target.closest('.modal') && !e.target.classList.contains('modal-backdrop')) return;
+  document.getElementById('modal-backdrop').classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+/* ============================================================
+   PAGE WIRE-UP
+   ============================================================ */
 async function load() {
   collection = await fetchCollection(currentUser);
   render();
@@ -478,13 +1102,12 @@ document.querySelectorAll('.filter').forEach(b => {
     render();
   });
 });
-
 document.getElementById('user-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') changeUser();
 });
 
 load();
-// Refresh every 15s so viewers see new pulls live without manual reload
+// Live-refresh every 15s so viewers see new pulls without manual reload
 setInterval(load, 15000);
 </script>
 </body>
