@@ -319,8 +319,9 @@
     background-blend-mode: overlay, screen, normal;
     border: 14px solid #1a2966;
     box-shadow: 0 0 0 3px #ffcb05 inset, 0 20px 40px rgba(0,0,0,.5);
-    position: relative;
     overflow: hidden;
+    /* position is inherited from .card-face (absolute + inset:0) so the
+       card-back fills the full 380x530 card frame */
   }
   /* swirly cloud texture overlay using diagonal repeating gradient */
   .card-back::before {
