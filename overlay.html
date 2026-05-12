@@ -1283,8 +1283,12 @@ const cfg = Object.assign({
 
   // ---- Sound effects ----
   soundsEnabled: true,
-  soundVolume: 0.5,                         // 0.0 - 1.0 master volume
+  soundVolume: 0.5,                              // 0.0 - 1.0 master volume
   legendaryFanfareUrl: 'legendary-fanfare.mp3',  // relative to overlay.html
+  // OBS browser sources can buffer audio slightly behind visuals. The pre-warm
+  // on overlay load usually handles cold-start lag. If audio still feels late
+  // in OBS after warmup, bump this to 100-200 to fire SFX earlier than visual.
+  audioOffsetMs: 0,
 }, window.STREAM_CONFIG || {});
 
 // URL overrides (e.g. ?shinyOdds=20 for testing)
@@ -1310,11 +1314,15 @@ const Sfx = {
   _legendaryAudio: null,
 
   init() {
+    // Pre-warm the AudioContext so the first procedural sound isn't laggy
+    try { this._getCtx(); } catch (e) {}
     if (cfg.legendaryFanfareUrl) {
       try {
         this._legendaryAudio = new Audio(cfg.legendaryFanfareUrl);
         this._legendaryAudio.preload = 'auto';
         this._legendaryAudio.volume = cfg.soundVolume;
+        // Force the browser to start fetching the audio data immediately
+        this._legendaryAudio.load();
       } catch (e) { console.warn('Legendary fanfare load failed:', e); }
     }
   },
@@ -1820,9 +1828,10 @@ async function playPack(gifter, card, isNew) {
   // Brief suspense beat
   await wait(300);
 
-  // EXPLOSION — pack top blasts off, sparks fly outward
-  scene.classList.add('exploded');
+  // EXPLOSION — fire SFX early, then visual after the OBS audio offset
   Sfx.packTear();
+  await wait(cfg.audioOffsetMs || 0);
+  scene.classList.add('exploded');
 
   // Card back rises out of the pack while sparks are still flying
   await wait(400);
@@ -1840,10 +1849,11 @@ async function playPack(gifter, card, isNew) {
   scene.classList.add('vibrating');
   await wait(1000);
 
-  // FLASH + REVEAL — flash bursts, card-back cross-fades to card-front mid-flash
+  // FLASH + REVEAL — fire SFX early (rarity-aware), then visual after the OBS audio offset
   scene.classList.remove('vibrating');
+  Sfx.reveal(card);
+  await wait(cfg.audioOffsetMs || 0);
   scene.classList.add('flashing');
-  Sfx.reveal(card);                   // sound fires with the flash (rarity-aware)
   await wait(200);                    // let the flash build first
   scene.classList.add('revealed');    // back fades out, front fades in
   await wait(800);                    // flash finishes
