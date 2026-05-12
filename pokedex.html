@@ -246,6 +246,136 @@
   }
   .progress .stats .chip.streak strong { color: #ff9444; }
 
+  /* ===== TRAINER LEVEL CARD ===== */
+  .trainer-card {
+    background:
+      radial-gradient(circle at 100% 0%, rgba(255,203,5,.12) 0%, transparent 50%),
+      linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-hi) 100%);
+    border: 1px solid rgba(255,203,5,.25);
+    border-radius: 16px;
+    padding: 22px 26px;
+    margin-bottom: 22px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .trainer-card::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 250px; height: 250px;
+    background: radial-gradient(circle, rgba(255,203,5,.12) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .trainer-level-block {
+    flex-shrink: 0;
+    text-align: center;
+    padding: 8px 18px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+    border-radius: 14px;
+    box-shadow:
+      0 6px 20px rgba(255,203,5,.4),
+      inset 0 -3px 0 rgba(0,0,0,.15);
+    position: relative;
+  }
+  .trainer-level-label {
+    color: rgba(26,41,102,.75);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .trainer-level-num {
+    color: var(--navy-dark);
+    font-family: 'Impact', sans-serif;
+    font-size: 44px;
+    line-height: 1;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 0 rgba(255,255,255,.3);
+  }
+  .trainer-info {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+  }
+  .trainer-title {
+    color: var(--gold);
+    font-family: 'Impact', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1.5px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .trainer-xp-text {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  .trainer-xp-text strong {
+    color: var(--text);
+    font-weight: 800;
+  }
+  .trainer-xp-text .next {
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .trainer-xp-bar {
+    height: 10px;
+    background: rgba(0,0,0,.5);
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .trainer-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-dim) 0%, var(--gold) 100%);
+    width: 0%;
+    transition: width 1.4s cubic-bezier(.16,1,.3,1);
+    box-shadow: 0 0 10px rgba(255,203,5,.5);
+    border-radius: 4px;
+  }
+  .trainer-rewards {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .trainer-rewards .xp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0,0,0,.35);
+    padding: 3px 9px;
+    border-radius: 100px;
+    border: 1px solid var(--line);
+  }
+  .trainer-rewards .xp-tag strong { color: var(--text); }
+  @media (max-width: 640px) {
+    .trainer-card { flex-direction: column; gap: 14px; text-align: center; }
+    .trainer-info { width: 100%; }
+  }
+  /* Leaderboard level chip */
+  .leaderboard .lb-level {
+    display: inline-flex;
+    align-items: center;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+    color: var(--navy-dark);
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 100px;
+    margin-right: 8px;
+    letter-spacing: .5px;
+    box-shadow: 0 2px 6px rgba(255,203,5,.3);
+  }
+
   /* ===== RECENT PULLS STRIP ===== */
   .recent-pulls {
     display: flex;
@@ -1132,6 +1262,27 @@
     </div>
   </section>
 
+  <!-- Trainer level card -->
+  <section class="trainer-card">
+    <div class="trainer-level-block">
+      <div class="trainer-level-label">Trainer Level</div>
+      <div class="trainer-level-num" id="trainer-level">1</div>
+    </div>
+    <div class="trainer-info">
+      <div class="trainer-title" id="trainer-title">Trainee</div>
+      <div class="trainer-xp-text" id="trainer-xp-text">
+        <strong>0 XP</strong>
+      </div>
+      <div class="trainer-xp-bar"><div class="trainer-xp-fill" id="trainer-xp-fill"></div></div>
+      <div class="trainer-rewards">
+        <span class="xp-tag">Regular: <strong>+10 XP</strong></span>
+        <span class="xp-tag">Shiny: <strong>+50 XP</strong> ✦</span>
+        <span class="xp-tag">Legendary: <strong>+100 XP</strong> ⚜</span>
+        <span class="xp-tag">Shiny Legendary: <strong>+250 XP</strong> 🌟</span>
+      </div>
+    </div>
+  </section>
+
   <!-- Recent pulls strip -->
   <h2 class="section-title"><span class="icon">⏱</span> Recent Pulls <span class="hint">last 10</span></h2>
   <div class="recent-pulls" id="recent-pulls"></div>
@@ -1228,6 +1379,95 @@ const descriptionCache = {};
 const evolutionCache = {};
 
 const LEGEND_IDS = new Set([144, 145, 146, 150, 151]);
+
+/* ============================================================
+   TRAINER XP / LEVEL SYSTEM
+   XP is computed from the viewer's existing collection — every
+   historical pull retroactively counts toward their level, so
+   launching this mid-season is fair to early supporters.
+
+   XP per pull (one-time per Pokemon, since the system is no-dupes):
+     Regular         +10  XP
+     Shiny           +50  XP
+     Legendary      +100  XP
+     Shiny Legendary +250 XP
+
+   Power curve (xpForLevel(N) = (N-1)^2.2 × 25) keeps early levels
+   feeling fast while making higher levels real chase tiers.
+   Designed so Gen 1 alone tops out viewers around Lv 8-9; future
+   generations are required to push into Champion+ territory.
+
+     Lv 1  = 0       (anyone signed in)
+     Lv 2  = 25      (~3 pulls)
+     Lv 5  = 530     (~50 regular pulls)
+     Lv 7  = ~1300   (close to Gen 1 completion)
+     Lv 9  = ~2500   (full Gen 1 + a couple shinies)
+     Lv 11 = ~4000   (need Gen 2 too)
+     Lv 14 = ~8000   (multi-gen completionist)
+     Lv 17 = ~13000  (whale tier)
+     Lv 21 = ~22000  (legacy chase)
+     Lv 31+= true Living Legend status
+   ============================================================ */
+const XP_VALUES = { regular: 10, shiny: 50, legendary: 100, shinyLegendary: 250 };
+const TITLES = [
+  { min: 1,  name: 'Trainee' },
+  { min: 3,  name: 'Rookie Trainer' },
+  { min: 5,  name: 'Junior Trainer' },
+  { min: 7,  name: 'Ace Trainer' },
+  { min: 9,  name: 'Elite Trainer' },
+  { min: 11, name: 'Veteran Trainer' },
+  { min: 14, name: 'Pokémon Master' },
+  { min: 17, name: 'Champion' },
+  { min: 21, name: 'Grand Champion' },
+  { min: 26, name: 'Hall of Famer' },
+  { min: 31, name: 'Living Legend' },
+];
+
+function calculateXP(col) {
+  let xp = 0;
+  // Iterate unique Pokemon (no-dupes means each id appears at most twice:
+  // once regular and once _shiny — we should award XP for the BEST variant
+  // they have of each Pokemon)
+  const bestByPokemon = new Map();
+  for (const k of Object.keys(col)) {
+    const v = col[k];
+    if (!v || typeof v.id !== 'number') continue;
+    const isLeg = LEGEND_IDS.has(v.id);
+    const isShinyLeg = v.shiny && isLeg;
+    let rank;
+    if (isShinyLeg) rank = 4;
+    else if (isLeg) rank = 3;
+    else if (v.shiny) rank = 2;
+    else rank = 1;
+    const existing = bestByPokemon.get(v.id) || 0;
+    if (rank > existing) bestByPokemon.set(v.id, rank);
+  }
+  for (const rank of bestByPokemon.values()) {
+    if (rank === 4) xp += XP_VALUES.shinyLegendary;
+    else if (rank === 3) xp += XP_VALUES.legendary;
+    else if (rank === 2) xp += XP_VALUES.shiny;
+    else xp += XP_VALUES.regular;
+  }
+  return xp;
+}
+// Power curve: xpForLevel(N) = (N-1)^2.2 × 25
+// Gentle at low levels, steepens hard at higher tiers so champions
+// stay aspirational across multiple generations.
+function xpForLevel(n) {
+  if (n <= 1) return 0;
+  return Math.round(Math.pow(n - 1, 2.2) * 25);
+}
+function getLevelFromXP(xp) {
+  if (xp <= 0) return 1;
+  return Math.floor(Math.pow(xp / 25, 1 / 2.2)) + 1;
+}
+function getTitleForLevel(level) {
+  let title = TITLES[0].name;
+  for (const t of TITLES) {
+    if (level >= t.min) title = t.name;
+  }
+  return title;
+}
 
 document.getElementById('who').textContent = currentUser;
 document.getElementById('user-input').value = currentUser;
@@ -1482,10 +1722,31 @@ function render() {
     ? `Latest: <strong>${escapeHtml(latest.name)}${latest.shiny ? ' ✦' : ''}</strong>`
     : '';
 
+  renderTrainerLevel();
   renderRecentPulls();
   renderGrid(ownedSet, shinies, stats);
   renderTypeBreakdown(ownedSet);
   renderAchievements(stats);
+}
+
+function renderTrainerLevel() {
+  const xp = calculateXP(collection);
+  const level = getLevelFromXP(xp);
+  const title = getTitleForLevel(level);
+  const currentLevelXP = xpForLevel(level);
+  const nextLevelXP = xpForLevel(level + 1);
+  const xpIntoLevel = xp - currentLevelXP;
+  const xpNeeded = nextLevelXP - currentLevelXP;
+  const pct = xpNeeded > 0 ? (xpIntoLevel / xpNeeded) * 100 : 100;
+
+  document.getElementById('trainer-level').textContent = level;
+  document.getElementById('trainer-title').textContent = title;
+  document.getElementById('trainer-xp-text').innerHTML =
+    `<strong>${xp.toLocaleString()} XP</strong>` +
+    (level < 50
+      ? ` · <span class="next">${(nextLevelXP - xp).toLocaleString()} XP to Lv ${level + 1}</span>`
+      : ' · Max tier reached');
+  document.getElementById('trainer-xp-fill').style.width = Math.min(100, pct) + '%';
 }
 
 function renderRecentPulls() {
@@ -1635,10 +1896,15 @@ async function renderLeaderboard() {
           if (v.shiny) shinyLeg++;
         }
       }
-      return { user, owned: ownedSet.size, shiny, legendary, shinyLeg };
+      const xp = calculateXP(col);
+      const level = getLevelFromXP(xp);
+      return { user, owned: ownedSet.size, shiny, legendary, shinyLeg, xp, level };
     })
     .filter(r => r.owned >= 1)         // hide empty profiles
     .sort((a, b) => {
+      // Primary sort: XP (rewards quality of pulls, not just quantity)
+      if (b.xp !== a.xp) return b.xp - a.xp;
+      // Secondary tiebreakers (in case two viewers somehow have identical XP)
       if (b.owned !== a.owned) return b.owned - a.owned;
       if (b.legendary !== a.legendary) return b.legendary - a.legendary;
       if (b.shinyLeg !== a.shinyLeg) return b.shinyLeg - a.shinyLeg;
@@ -1652,7 +1918,9 @@ async function renderLeaderboard() {
       lbEl.innerHTML = rows.map((r, i) => `
         <li class="rank-${i + 1}" onclick="lookupUser('${escapeHtml(r.user).replace(/'/g, '&apos;')}')" style="cursor:pointer;">
           <span class="rank">${i + 1}</span>
-          <span class="lb-user">${escapeHtml(r.user)}${r.user === currentUser ? '<span class="you-tag">YOU</span>' : ''}</span>
+          <span class="lb-user">
+            <span class="lb-level">Lv ${r.level}</span>${escapeHtml(r.user)}${r.user === currentUser ? '<span class="you-tag">YOU</span>' : ''}
+          </span>
           <span class="lb-stats">
             <span class="lb-stat"><strong>${r.owned}</strong>/151</span>
             <span class="lb-stat shiny"><strong>${r.shiny}</strong> ✦</span>
