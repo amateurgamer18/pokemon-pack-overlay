@@ -65,4 +65,15 @@ window.STREAM_CONFIG = {
   // licensed artwork on public sites can attract takedown notices — that's
   // your call.
   cardBackImageUrl: 'https://raw.githubusercontent.com/amateurgamer18/pokemon-pack-overlay/main/backcard.png',
+
+  // ---- Sound effects ----
+  // soundsEnabled        — master on/off (or add ?mute=1 to the URL to silence)
+  // soundVolume          — 0.0 (silent) to 1.0 (full). Tune so SFX sit
+  //                        comfortably under your stream voice.
+  // legendaryFanfareUrl  — relative path or full URL to your fanfare MP3.
+  //                        Pack tear, regular reveal, and shiny reveal are
+  //                        generated procedurally — no files needed for those.
+  soundsEnabled: true,
+  soundVolume: 0.5,
+  legendaryFanfareUrl: 'legendary-fanfare.mp3',
 };

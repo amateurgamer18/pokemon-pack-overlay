@@ -1280,6 +1280,11 @@ const cfg = Object.assign({
 
   // Optional custom card-back image URL (leave blank to use CSS recreation)
   cardBackImageUrl: '',
+
+  // ---- Sound effects ----
+  soundsEnabled: true,
+  soundVolume: 0.5,                         // 0.0 - 1.0 master volume
+  legendaryFanfareUrl: 'legendary-fanfare.mp3',  // relative to overlay.html
 }, window.STREAM_CONFIG || {});
 
 // URL overrides (e.g. ?shinyOdds=20 for testing)
@@ -1293,6 +1298,231 @@ for (const k of Object.keys(cfg)) {
 const DEBUG = Q.has('debug');
 if (DEBUG) document.getElementById('debug').classList.add('on');
 const dbgStatus = (s) => { const el = document.getElementById('status'); if (el) el.textContent = s; };
+
+/* ============================================================
+   SOUND EFFECTS
+   - Pack tear, regular reveal, shiny reveal: procedural (Web Audio API)
+   - Legendary reveal: hosted MP3 (cfg.legendaryFanfareUrl)
+   - Disable all via cfg.soundsEnabled = false  OR  ?mute=1 in URL
+   ============================================================ */
+const Sfx = {
+  _ctx: null,
+  _legendaryAudio: null,
+
+  init() {
+    if (cfg.legendaryFanfareUrl) {
+      try {
+        this._legendaryAudio = new Audio(cfg.legendaryFanfareUrl);
+        this._legendaryAudio.preload = 'auto';
+        this._legendaryAudio.volume = cfg.soundVolume;
+      } catch (e) { console.warn('Legendary fanfare load failed:', e); }
+    }
+  },
+  enabled() {
+    return cfg.soundsEnabled !== false && !Q.has('mute');
+  },
+  _getCtx() {
+    if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this._ctx.state === 'suspended') this._ctx.resume();
+    return this._ctx;
+  },
+  _noise(c, durationSec = 1) {
+    const buf = c.createBuffer(1, c.sampleRate * durationSec, c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  },
+
+  // -------- Pack tear --------
+  packTear() {
+    if (!this.enabled()) return;
+    const c = this._getCtx();
+    const t = c.currentTime;
+    const master = c.createGain();
+    master.gain.value = 0.55 * cfg.soundVolume;
+    master.connect(c.destination);
+
+    // initial sharp rip
+    const rip = c.createBufferSource();
+    rip.buffer = this._noise(c, 0.12);
+    const rf = c.createBiquadFilter();
+    rf.type = 'highpass'; rf.frequency.value = 4000; rf.Q.value = 2;
+    const rg = c.createGain();
+    rg.gain.setValueAtTime(0, t);
+    rg.gain.linearRampToValueAtTime(0.55, t + 0.005);
+    rg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    rip.connect(rf).connect(rg).connect(master);
+    rip.start(t); rip.stop(t + 0.12);
+
+    // crinkle ticks
+    for (let i = 0; i < 5; i++) {
+      const offset = 0.05 + i * (0.09 + Math.random() * 0.04);
+      const crk = c.createBufferSource();
+      crk.buffer = this._noise(c, 0.06);
+      const cf = c.createBiquadFilter();
+      cf.type = 'bandpass';
+      cf.frequency.value = 2500 - i * 250 + (Math.random() - .5) * 400;
+      cf.Q.value = 5;
+      const cg = c.createGain();
+      cg.gain.setValueAtTime(0, t + offset);
+      cg.gain.linearRampToValueAtTime(0.35 + Math.random() * 0.15, t + offset + 0.003);
+      cg.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.05);
+      crk.connect(cf).connect(cg).connect(master);
+      crk.start(t + offset); crk.stop(t + offset + 0.06);
+    }
+
+    // FWIP sweep + sub-thump
+    const fwip = c.createBufferSource();
+    fwip.buffer = this._noise(c, 0.3);
+    const ff = c.createBiquadFilter();
+    ff.type = 'lowpass'; ff.Q.value = 4;
+    ff.frequency.setValueAtTime(1800, t + 0.55);
+    ff.frequency.exponentialRampToValueAtTime(200, t + 0.85);
+    const fg = c.createGain();
+    fg.gain.setValueAtTime(0, t + 0.55);
+    fg.gain.linearRampToValueAtTime(0.6, t + 0.58);
+    fg.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    fwip.connect(ff).connect(fg).connect(master);
+    fwip.start(t + 0.55); fwip.stop(t + 0.9);
+
+    const thump = c.createOscillator();
+    thump.type = 'sine';
+    thump.frequency.setValueAtTime(140, t + 0.6);
+    thump.frequency.exponentialRampToValueAtTime(50, t + 0.85);
+    const tg = c.createGain();
+    tg.gain.setValueAtTime(0, t + 0.6);
+    tg.gain.linearRampToValueAtTime(0.5, t + 0.62);
+    tg.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    thump.connect(tg).connect(master);
+    thump.start(t + 0.6); thump.stop(t + 0.9);
+  },
+
+  // -------- Regular card reveal --------
+  regularReveal() {
+    if (!this.enabled()) return;
+    const c = this._getCtx();
+    const t = c.currentTime;
+    const master = c.createGain();
+    master.gain.value = 0.45 * cfg.soundVolume;
+    master.connect(c.destination);
+
+    // delay-based reverb tail
+    const delay = c.createDelay();
+    delay.delayTime.value = 0.18;
+    const feedback = c.createGain();
+    feedback.gain.value = 0.35;
+    const wet = c.createGain();
+    wet.gain.value = 0.4;
+    delay.connect(feedback).connect(delay);
+    delay.connect(wet).connect(master);
+
+    // whoosh
+    const wh = c.createBufferSource();
+    wh.buffer = this._noise(c, 0.4);
+    const whf = c.createBiquadFilter();
+    whf.type = 'bandpass'; whf.Q.value = 2.5;
+    whf.frequency.setValueAtTime(400, t);
+    whf.frequency.exponentialRampToValueAtTime(3200, t + 0.25);
+    const whg = c.createGain();
+    whg.gain.setValueAtTime(0, t);
+    whg.gain.linearRampToValueAtTime(0.25, t + 0.12);
+    whg.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    wh.connect(whf).connect(whg).connect(master);
+    wh.start(t); wh.stop(t + 0.4);
+
+    // FM bell, two voices
+    const bellAt = t + 0.22;
+    [880, 1318.5].forEach((fund, i) => {
+      const carrier = c.createOscillator();
+      carrier.type = 'sine'; carrier.frequency.value = fund;
+      const mod = c.createOscillator();
+      mod.type = 'sine'; mod.frequency.value = fund * 3;
+      const mg = c.createGain();
+      mg.gain.setValueAtTime(fund * 4, bellAt);
+      mg.gain.exponentialRampToValueAtTime(fund * 0.3, bellAt + 0.8);
+      mod.connect(mg).connect(carrier.frequency);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, bellAt);
+      g.gain.linearRampToValueAtTime(i === 0 ? 0.38 : 0.18, bellAt + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, bellAt + 1.2);
+      carrier.connect(g);
+      g.connect(master); g.connect(delay);
+      mod.start(bellAt); mod.stop(bellAt + 1.3);
+      carrier.start(bellAt); carrier.stop(bellAt + 1.3);
+    });
+
+    // sparkle layer
+    for (let i = 0; i < 3; i++) {
+      const dT = 0.3 + i * 0.12 + Math.random() * 0.05;
+      const osc = c.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 3500 + Math.random() * 2500;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, t + dT);
+      g.gain.linearRampToValueAtTime(0.16, t + dT + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dT + 0.25);
+      osc.connect(g).connect(master);
+      osc.start(t + dT); osc.stop(t + dT + 0.3);
+    }
+  },
+
+  // -------- Shiny reveal --------
+  shinyReveal() {
+    if (!this.enabled()) return;
+    const c = this._getCtx();
+    const t = c.currentTime;
+    const master = c.createGain();
+    master.gain.value = 0.4 * cfg.soundVolume;
+    master.connect(c.destination);
+
+    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+    notes.forEach((freq, i) => {
+      const delay = i * 0.09;
+      [1, 2.756].forEach((mult, j) => {
+        const osc = c.createOscillator();
+        osc.type = 'sine'; osc.frequency.value = freq * mult;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0, t + delay);
+        g.gain.linearRampToValueAtTime(j === 0 ? 0.45 : 0.18, t + delay + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + delay + 0.8);
+        osc.connect(g).connect(master);
+        osc.start(t + delay); osc.stop(t + delay + 0.85);
+      });
+    });
+
+    for (let i = 0; i < 8; i++) {
+      const dT = 0.1 + Math.random() * 1.1;
+      const osc = c.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 2500 + Math.random() * 2500;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, t + dT);
+      g.gain.linearRampToValueAtTime(0.18, t + dT + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dT + 0.2);
+      osc.connect(g).connect(master);
+      osc.start(t + dT); osc.stop(t + dT + 0.25);
+    }
+  },
+
+  // -------- Legendary reveal (hosted MP3) --------
+  legendaryReveal() {
+    if (!this.enabled() || !this._legendaryAudio) return;
+    try {
+      this._legendaryAudio.currentTime = 0;
+      this._legendaryAudio.volume = cfg.soundVolume;
+      const p = this._legendaryAudio.play();
+      if (p && p.catch) p.catch(e => console.warn('Legendary audio play blocked:', e));
+    } catch (e) { console.warn('Legendary audio play failed:', e); }
+  },
+
+  // Dispatch the right reveal sound based on card rarity
+  reveal(card) {
+    if (card.legendary) this.legendaryReveal();
+    else if (card.shiny) this.shinyReveal();
+    else this.regularReveal();
+  },
+};
+Sfx.init();
 
 /* ============================================================
    STORAGE — Firebase REST (optional) + localStorage fallback
@@ -1592,6 +1822,7 @@ async function playPack(gifter, card, isNew) {
 
   // EXPLOSION — pack top blasts off, sparks fly outward
   scene.classList.add('exploded');
+  Sfx.packTear();
 
   // Card back rises out of the pack while sparks are still flying
   await wait(400);
@@ -1612,6 +1843,7 @@ async function playPack(gifter, card, isNew) {
   // FLASH + REVEAL — flash bursts, card-back cross-fades to card-front mid-flash
   scene.classList.remove('vibrating');
   scene.classList.add('flashing');
+  Sfx.reveal(card);                   // sound fires with the flash (rarity-aware)
   await wait(200);                    // let the flash build first
   scene.classList.add('revealed');    // back fades out, front fades in
   await wait(800);                    // flash finishes
