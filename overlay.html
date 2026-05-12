@@ -58,7 +58,7 @@
     transform-style: preserve-3d;
   }
 
-  /* ---------- Pack ---------- */
+  /* ---------- Pack (spins in on entrance) ---------- */
   .pack {
     position: absolute;
     inset: 0;
@@ -70,7 +70,12 @@
       inset 0 0 40px rgba(0,0,0,.4),
       0 20px 60px rgba(0,0,0,.6);
     overflow: hidden;
-    transform-origin: center top;
+    transform-origin: center center;
+    transform: rotateY(-720deg) scale(.7);
+    transition: transform 1.6s cubic-bezier(.34, 1.1, .58, 1);
+  }
+  .scene.enter .pack {
+    transform: rotateY(0deg) scale(1);
   }
   .pack-foil {
     position: absolute;
@@ -153,12 +158,11 @@
     opacity: 0;
   }
 
-  /* Pack opens: top half flips up & away */
+  /* Pack opens: top half EXPLODES off with white fireworks */
   .pack-top, .pack-bot {
     position: absolute;
     left: 0; right: 0;
     overflow: hidden;
-    transition: transform 1.4s cubic-bezier(.7,0,.84,0), opacity 1.4s ease-out;
     transform-style: preserve-3d;
   }
   .pack-top {
@@ -171,24 +175,67 @@
     height: 70%;
     transform-origin: top center;
   }
+  /* Explosion — top blasts upward with rotation, opacity rapidly fades */
+  .scene.exploded .pack-top {
+    animation: packTopExplode 1.1s cubic-bezier(.2, .8, .4, 1) forwards;
+  }
+  @keyframes packTopExplode {
+    0%   { transform: translateY(0) rotate(0deg) scale(1);    opacity: 1; }
+    20%  { transform: translateY(-30px) rotate(-3deg) scale(1.06); opacity: 1; }
+    50%  { transform: translateY(-280px) rotate(15deg) scale(.85); opacity: .9; }
+    100% { transform: translateY(-700px) rotate(45deg) scale(.55); opacity: 0; }
+  }
+  /* Pack bottom recoils slightly and fades a touch */
+  .scene.exploded .pack-bot {
+    animation: packBotRecoil 1.1s cubic-bezier(.34, 1.4, .64, 1) forwards;
+  }
+  @keyframes packBotRecoil {
+    0%   { transform: translateY(0)    rotate(0deg); }
+    15%  { transform: translateY(18px) rotate(.5deg); }
+    100% { transform: translateY(10px) rotate(0deg); opacity: .85; }
+  }
 
-  .scene.opened .pack-top {
-    transform: rotateX(-160deg) translateY(-60px);
+  /* Explosion sparks — burst outward from the rip line */
+  .pack-burst {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .pack-burst .spark {
+    position: absolute;
+    left: 0; top: 0;
+    width: 14px; height: 14px;
+    background: radial-gradient(circle, white 0%, #fff8c8 35%, rgba(255,220,120,.6) 60%, transparent 80%);
+    border-radius: 50%;
     opacity: 0;
+    box-shadow: 0 0 16px white, 0 0 32px rgba(255,240,180,.7);
   }
-  .scene.opened .pack-bot {
-    transform: translateY(40px) rotateX(15deg);
+  .scene.exploded .pack-burst .spark {
+    animation: sparkFly 1.1s cubic-bezier(.2, .7, .4, 1) forwards;
+  }
+  @keyframes sparkFly {
+    0%   { transform: translate(-50%, -50%) scale(0);                opacity: 1; }
+    20%  { transform: translate(calc(-50% + var(--dx) * .25), calc(-50% + var(--dy) * .25)) scale(1.4); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.3); opacity: 0; }
+  }
+  /* For shiny pulls — sparks gain a rainbow tint */
+  .scene.shiny-pull .pack-burst .spark {
+    background: radial-gradient(circle, white 0%, #ffe4ff 30%, rgba(255,170,255,.7) 60%, transparent 80%);
+    box-shadow: 0 0 16px #fff, 0 0 36px rgba(255, 0, 255, .7);
   }
 
-  /* ---------- Card ---------- */
+  /* ---------- Card (flat, no 3D flipping — front stays hidden via opacity) ---------- */
   .card {
     position: absolute;
     left: 50%;
     top: 50%;
     width: 380px;
     height: 530px;
-    transform: translate(-50%, -50%) translateY(120px) scale(.85) rotateY(180deg);
-    transform-style: preserve-3d;
+    transform: translate(-50%, -50%) translateY(120px) scale(.85);
     opacity: 0;
     transition: opacity .4s ease-out, transform 1.2s cubic-bezier(.34,1.56,.64,1);
     border-radius: 18px;
@@ -196,37 +243,38 @@
   }
   .scene.opened .card {
     opacity: 1;
-    transform: translate(-50%, -50%) translateY(-30px) scale(1) rotateY(180deg);
+    transform: translate(-50%, -50%) translateY(-30px) scale(1);
   }
-  /* Charging — card hovers back-facing while energy builds (no peek!) */
+
+  /* Charging — slow breathing pulse */
   .scene.charging .card {
     animation: cardBreathe 1.4s ease-in-out infinite;
   }
   @keyframes cardBreathe {
-    0%, 100% { transform: translate(-50%, -50%) translateY(-30px) scale(1)    rotateY(180deg); }
-    50%      { transform: translate(-50%, -50%) translateY(-30px) scale(1.06) rotateY(180deg); }
+    0%, 100% { transform: translate(-50%, -50%) translateY(-30px) scale(1);    }
+    50%      { transform: translate(-50%, -50%) translateY(-30px) scale(1.06); }
   }
 
-  /* Vibrating — fast nervous shake as tension peaks */
+  /* Vibrating — fast nervous shake */
   .scene.vibrating .card {
     animation: cardShake .055s linear infinite;
   }
   @keyframes cardShake {
-    0%   { transform: translate(-50%, -50%) translateY(-30px) translate(-4px,-2px) scale(1.06) rotateY(180deg); }
-    25%  { transform: translate(-50%, -50%) translateY(-30px) translate(3px,2px)   scale(1.06) rotateY(180deg); }
-    50%  { transform: translate(-50%, -50%) translateY(-30px) translate(-2px,3px)  scale(1.06) rotateY(180deg); }
-    75%  { transform: translate(-50%, -50%) translateY(-30px) translate(4px,-3px)  scale(1.06) rotateY(180deg); }
-    100% { transform: translate(-50%, -50%) translateY(-30px) translate(0,0)       scale(1.06) rotateY(180deg); }
+    0%   { transform: translate(-50%, -50%) translateY(-30px) translate(-4px,-2px) scale(1.06); }
+    25%  { transform: translate(-50%, -50%) translateY(-30px) translate(3px,2px)   scale(1.06); }
+    50%  { transform: translate(-50%, -50%) translateY(-30px) translate(-2px,3px)  scale(1.06); }
+    75%  { transform: translate(-50%, -50%) translateY(-30px) translate(4px,-3px)  scale(1.06); }
+    100% { transform: translate(-50%, -50%) translateY(-30px) translate(0,0)       scale(1.06); }
   }
 
-  /* Reveal — single dramatic flip with overshoot bounce */
+  /* Reveal — dramatic scale bounce (cross-fade handled on .card-back/.card-front) */
   .scene.revealed .card {
-    animation: cardFlipReveal .75s cubic-bezier(.34,1.6,.64,1) forwards;
+    animation: cardRevealBounce .85s cubic-bezier(.34,1.6,.64,1) forwards;
   }
-  @keyframes cardFlipReveal {
-    0%   { transform: translate(-50%, -50%) translateY(-30px) scale(1.06) rotateY(180deg); }
-    50%  { transform: translate(-50%, -50%) translateY(-70px) scale(1.18) rotateY(270deg); }
-    100% { transform: translate(-50%, -50%) translateY(-30px) scale(1.08) rotateY(360deg); }
+  @keyframes cardRevealBounce {
+    0%   { transform: translate(-50%, -50%) translateY(-30px) scale(1.06); }
+    35%  { transform: translate(-50%, -50%) translateY(-80px) scale(1.28); }
+    100% { transform: translate(-50%, -50%) translateY(-40px) scale(1.12); }
   }
 
   /* Subtle float during the reveal hold phase */
@@ -234,17 +282,24 @@
     animation: cardFloat 3s ease-in-out infinite;
   }
   @keyframes cardFloat {
-    0%, 100% { transform: translate(-50%, -50%) translateY(-30px) scale(1.08) rotateY(360deg); }
-    50%      { transform: translate(-50%, -50%) translateY(-42px) scale(1.08) rotateY(360deg); }
+    0%, 100% { transform: translate(-50%, -50%) translateY(-40px) scale(1.12); }
+    50%      { transform: translate(-50%, -50%) translateY(-55px) scale(1.12); }
   }
 
   .card-face {
     position: absolute;
     inset: 0;
-    backface-visibility: hidden;
     border-radius: 18px;
     overflow: hidden;
+    transition: opacity .45s ease-out, transform .55s cubic-bezier(.34,1.6,.64,1);
   }
+  /* Back is visible by default; front is hidden until reveal (NO peek possible) */
+  .card-back  { opacity: 1; transform: scale(1); }
+  .card-front { opacity: 0; transform: scale(.85); }
+
+  /* At reveal: back disintegrates outward, front materialises inward */
+  .scene.revealed .card-back  { opacity: 0; transform: scale(1.45); }
+  .scene.revealed .card-front { opacity: 1; transform: scale(1); transition-delay: .18s; }
 
   /* ============================================================
      Card back — CSS recreation of the classic Pokémon TCG back
@@ -733,23 +788,24 @@
     100% { transform: translate(-50%, -50%) translateY(-30px) rotate(360deg); }
   }
 
-  /* "★ SHINY ★" banner that slams in for shinies */
+  /* Shiny tag — sits BELOW the card, modern minimal style with cycling rainbow border */
   .shiny-banner {
     position: absolute;
-    left: 50%; top: 60px;
-    transform: translate(-50%, -200px) scale(0);
-    background: linear-gradient(90deg, #ff00ff, #ffaa00, #ffff00, #00ddff, #ff00ff);
-    background-size: 300% 100%;
-    color: white;
-    font-family: 'Impact', 'Arial Black', sans-serif;
-    font-size: 56px;
-    font-weight: 900;
-    letter-spacing: 6px;
-    padding: 14px 50px;
-    border-radius: 18px;
-    border: 5px solid white;
-    box-shadow: 0 0 60px rgba(255, 0, 255, .9), 0 10px 30px rgba(0, 0, 0, .5);
-    text-shadow: 0 0 14px white, 4px 4px 0 rgba(0,0,0,.4);
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, calc(0px + 310px)) scale(.7);
+    background: rgba(8, 8, 18, .92);
+    color: #fff;
+    font-family: 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 10px;
+    text-indent: 10px;                   /* visually balance the trailing letter-spacing */
+    padding: 9px 22px 9px 32px;
+    border-radius: 100px;
+    border: 2px solid #ff00ff;
+    box-shadow: 0 0 18px #ff00ff, 0 0 48px rgba(255, 0, 255, .35), 0 8px 22px rgba(0,0,0,.55);
+    text-shadow: 0 0 10px rgba(255,255,255,.6);
     white-space: nowrap;
     pointer-events: none;
     z-index: 12;
@@ -758,17 +814,17 @@
   .scene.shiny-pull.revealed .shiny-banner {
     opacity: 1;
     animation:
-      shinyBannerDrop .75s cubic-bezier(.34,1.56,.64,1) forwards,
-      rainbowShimmer 1.5s linear infinite;
+      shinyTagRise .6s cubic-bezier(.34, 1.56, .64, 1) .25s forwards,
+      shinyBorderCycle 2.8s linear .25s infinite;
   }
-  @keyframes shinyBannerDrop {
-    0%   { transform: translate(-50%, -260px) scale(0)   rotate(-20deg); opacity: 0; }
-    60%  { transform: translate(-50%, 0)      scale(1.2) rotate(4deg);   opacity: 1; }
-    100% { transform: translate(-50%, 0)      scale(1)   rotate(0deg);   opacity: 1; }
+  @keyframes shinyTagRise {
+    0%   { transform: translate(-50%, 340px) scale(.55); opacity: 0; }
+    100% { transform: translate(-50%, 290px) scale(1);   opacity: 1; }
   }
-  @keyframes rainbowShimmer {
-    0%   { background-position: 0% 50%; }
-    100% { background-position: 300% 50%; }
+  @keyframes shinyBorderCycle {
+    0%, 100% { border-color: #ff00ff; box-shadow: 0 0 18px #ff00ff, 0 0 48px rgba(255, 0, 255, .35), 0 8px 22px rgba(0,0,0,.55); }
+    33%      { border-color: #00ddff; box-shadow: 0 0 18px #00ddff, 0 0 48px rgba(0, 221, 255, .35), 0 8px 22px rgba(0,0,0,.55); }
+    66%      { border-color: #ffaa00; box-shadow: 0 0 18px #ffaa00, 0 0 48px rgba(255, 170, 0, .35), 0 8px 22px rgba(0,0,0,.55); }
   }
 
   /* Completion celebration (full-screen takeover) */
@@ -1054,7 +1110,6 @@ function buildSceneDOM(card) {
       <div class="pack-top">
         <div class="pack-foil"></div>
         <div class="pack-stripe top"></div>
-        <div class="pack-cut"></div>
       </div>
       <div class="pack-bot">
         <div class="pack-foil"></div>
@@ -1062,6 +1117,8 @@ function buildSceneDOM(card) {
         <div class="pokeball"></div>
         <div class="pack-stripe bot"></div>
       </div>
+      <!-- explosion sparks burst from the rip line -->
+      <div class="pack-burst"></div>
     </div>
 
     <div class="card">
@@ -1094,10 +1151,31 @@ function buildSceneDOM(card) {
     </div>
 
     <!-- shiny-only flourishes (hidden by default unless scene.shiny-pull) -->
-    <div class="shiny-banner">★ SHINY ★</div>
+    <div class="shiny-banner">✦ SHINY</div>
     <div class="shockwave"></div>
     <div class="flash-overlay"></div>
   `;
+
+  // Generate explosion sparks — random radial directions from the rip line
+  const burstEl = scene.querySelector('.pack-burst');
+  if (burstEl) {
+    const sparkCount = card.shiny ? 36 : 26;
+    for (let i = 0; i < sparkCount; i++) {
+      const s = document.createElement('div');
+      s.className = 'spark';
+      const angle = (Math.PI * (i / sparkCount)) - (Math.PI * .15) + (Math.random() - .5) * .25;
+      // Upward arc — angles biased upward (0 = right, -PI/2 = up)
+      const upAngle = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.2;
+      const dist = 180 + Math.random() * 260;
+      s.style.setProperty('--dx', `${Math.cos(upAngle) * dist}px`);
+      s.style.setProperty('--dy', `${Math.sin(upAngle) * dist}px`);
+      s.style.animationDelay = `${Math.random() * .12}s`;
+      const size = 8 + Math.random() * 14;
+      s.style.width = `${size}px`;
+      s.style.height = `${size}px`;
+      burstEl.appendChild(s);
+    }
+  }
   // Sparkles (more for shiny)
   const sparkleCount = card.shiny ? 28 : 12;
   const sparklesEl = scene.querySelector('.sparkles');
@@ -1154,50 +1232,51 @@ async function playPack(gifter, card, isNew) {
   if (isNew) scene.querySelector('.new-badge').classList.add('show');
 
   // === Dramatic Timeline (no front-face peek) =================
-  // 0.0s  → 0.6s : scene drops in
-  // 0.6s  → 1.5s : pack top "cut" indicator appears
-  // 1.5s  → 2.9s : pack opens, top half flips away
-  // 2.9s  → 3.9s : card back rises and settles (still back-facing)
-  // 3.9s  → 6.4s : CHARGING — glowing aura, slow breathing pulse
-  // 6.4s  → 7.4s : VIBRATING — card shakes, aura intensifies
-  // 7.4s  → 8.1s : FLASH — full-screen burst (+ rainbow shockwave for shinies)
-  //                ~200ms into flash, card FLIPS to reveal front
-  // 8.1s  → end  : REVEALED — sparkles burst, shiny banner drops, card floats
+  // 0.0s  → 1.6s : pack SPINS in, lands facing camera
+  // 1.6s  → 1.9s : brief beat of suspense
+  // 1.9s  → 3.0s : pack top EXPLODES off with firework sparks
+  // 2.3s  → 3.3s : card back slides up out of the pack (overlaps explosion)
+  // 3.3s  → 5.6s : CHARGING — glowing aura, slow breathing pulse
+  // 5.6s  → 6.6s : VIBRATING — card shakes, aura intensifies
+  // 6.6s  → 7.4s : FLASH — screen burst (rainbow shockwave for shinies)
+  //                ~200ms into flash: card-back fades out, card-front fades in
+  // 7.4s  → end  : REVEALED — sparkles, shiny tag rises below, card floats
   // +lingerMs    : exit slide
   // =============================================================
 
   requestAnimationFrame(() => scene.classList.add('enter'));
 
-  // Pack cut indicator
-  await wait(900);
-  const cut = scene.querySelector('.pack-cut');
-  if (cut) {
-    cut.style.opacity = '1';
-    cut.style.transition = 'opacity .2s';
-  }
+  // Let the pack finish its spin-in
+  await wait(1600);
 
-  // Pack opens — card back rises into view
-  await wait(600);
+  // Brief suspense beat
+  await wait(300);
+
+  // EXPLOSION — pack top blasts off, sparks fly outward
+  scene.classList.add('exploded');
+
+  // Card back rises out of the pack while sparks are still flying
+  await wait(400);
   scene.classList.add('opened');
 
-  // Card back settles in place
+  // Card settles into floating position
   await wait(1000);
 
-  // Charge phase — aura pulses, card breathes, tension builds
+  // Charge phase — aura pulses, card breathes
   scene.classList.add('charging');
-  await wait(2500);
+  await wait(2300);
 
-  // Vibrate phase — card shakes nervously, aura intensifies
+  // Vibrate phase — card shakes, aura intensifies
   scene.classList.remove('charging');
   scene.classList.add('vibrating');
   await wait(1000);
 
-  // FLASH + REVEAL — flash bursts, card flips mid-flash
+  // FLASH + REVEAL — flash bursts, card-back cross-fades to card-front mid-flash
   scene.classList.remove('vibrating');
   scene.classList.add('flashing');
-  await wait(220);                    // let the flash build before flipping
-  scene.classList.add('revealed');    // card flips 180° to show the front
-  await wait(700);                    // flash finishes fading
+  await wait(200);                    // let the flash build first
+  scene.classList.add('revealed');    // back fades out, front fades in
+  await wait(800);                    // flash finishes
   scene.classList.remove('flashing');
 
   // Settle into floating state
