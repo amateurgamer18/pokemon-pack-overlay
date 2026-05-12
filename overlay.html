@@ -198,22 +198,44 @@
     opacity: 1;
     transform: translate(-50%, -50%) translateY(-30px) scale(1) rotateY(180deg);
   }
-  .scene.spinning .card {
-    animation: spinDecelerate 7s cubic-bezier(.15,.95,.35,1) forwards;
+  /* Charging — card hovers back-facing while energy builds (no peek!) */
+  .scene.charging .card {
+    animation: cardBreathe 1.4s ease-in-out infinite;
   }
-  @keyframes spinDecelerate {
-    0%   { transform: translate(-50%, -50%) translateY(-30px) scale(1) rotateY(180deg); }
-    100% { transform: translate(-50%, -50%) translateY(-30px) scale(1) rotateY(2520deg); }
-    /* 2520deg = 180deg + 6.5 full rotations, lands on 360°*7 = face out */
+  @keyframes cardBreathe {
+    0%, 100% { transform: translate(-50%, -50%) translateY(-30px) scale(1)    rotateY(180deg); }
+    50%      { transform: translate(-50%, -50%) translateY(-30px) scale(1.06) rotateY(180deg); }
   }
 
-  .scene.revealed .card {
-    animation: cardReveal .9s cubic-bezier(.34,1.56,.64,1) forwards;
+  /* Vibrating — fast nervous shake as tension peaks */
+  .scene.vibrating .card {
+    animation: cardShake .055s linear infinite;
   }
-  @keyframes cardReveal {
-    0%   { transform: translate(-50%, -50%) translateY(-30px) scale(1)    rotateY(2520deg); }
-    60%  { transform: translate(-50%, -50%) translateY(-50px) scale(1.08) rotateY(2520deg); }
-    100% { transform: translate(-50%, -50%) translateY(-30px) scale(1.04) rotateY(2520deg); }
+  @keyframes cardShake {
+    0%   { transform: translate(-50%, -50%) translateY(-30px) translate(-4px,-2px) scale(1.06) rotateY(180deg); }
+    25%  { transform: translate(-50%, -50%) translateY(-30px) translate(3px,2px)   scale(1.06) rotateY(180deg); }
+    50%  { transform: translate(-50%, -50%) translateY(-30px) translate(-2px,3px)  scale(1.06) rotateY(180deg); }
+    75%  { transform: translate(-50%, -50%) translateY(-30px) translate(4px,-3px)  scale(1.06) rotateY(180deg); }
+    100% { transform: translate(-50%, -50%) translateY(-30px) translate(0,0)       scale(1.06) rotateY(180deg); }
+  }
+
+  /* Reveal — single dramatic flip with overshoot bounce */
+  .scene.revealed .card {
+    animation: cardFlipReveal .75s cubic-bezier(.34,1.6,.64,1) forwards;
+  }
+  @keyframes cardFlipReveal {
+    0%   { transform: translate(-50%, -50%) translateY(-30px) scale(1.06) rotateY(180deg); }
+    50%  { transform: translate(-50%, -50%) translateY(-70px) scale(1.18) rotateY(270deg); }
+    100% { transform: translate(-50%, -50%) translateY(-30px) scale(1.08) rotateY(360deg); }
+  }
+
+  /* Subtle float during the reveal hold phase */
+  .scene.revealed.settled .card {
+    animation: cardFloat 3s ease-in-out infinite;
+  }
+  @keyframes cardFloat {
+    0%, 100% { transform: translate(-50%, -50%) translateY(-30px) scale(1.08) rotateY(360deg); }
+    50%      { transform: translate(-50%, -50%) translateY(-42px) scale(1.08) rotateY(360deg); }
   }
 
   .card-face {
@@ -224,48 +246,105 @@
     overflow: hidden;
   }
 
-  /* Card back (Pokemon TCG style) */
+  /* ============================================================
+     Card back — CSS recreation of the classic Pokémon TCG back
+     (blue swirl + Pokéball + top & bottom mirrored POKÉMON logo).
+     If config.cardBackImageUrl is set, the JS swaps this for a
+     plain <img> instead.
+     ============================================================ */
   .card-back {
     background:
-      radial-gradient(circle at 50% 50%, #4a5fd6 0%, #2a3b8f 60%, #1a2966 100%);
-    border: 12px solid #ffcb05;
-    box-shadow: 0 0 0 4px #2a3b8f inset, 0 20px 40px rgba(0,0,0,.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+      /* central highlight that makes the swirl look glossy */
+      radial-gradient(ellipse 70% 50% at 50% 50%, rgba(255,255,255,.15) 0%, transparent 60%),
+      /* the swirl: concentric tinted bands */
+      conic-gradient(from 30deg at 50% 50%,
+        #2a4fa8 0deg, #4a78d8 45deg, #2a4fa8 90deg, #5887e8 135deg,
+        #2a4fa8 180deg, #4a78d8 225deg, #2a4fa8 270deg, #5887e8 315deg, #2a4fa8 360deg),
+      radial-gradient(circle at 50% 50%, #4a78d8 0%, #2a4fa8 60%, #15296e 100%);
+    background-blend-mode: overlay, screen, normal;
+    border: 14px solid #1a2966;
+    box-shadow: 0 0 0 3px #ffcb05 inset, 0 20px 40px rgba(0,0,0,.5);
     transform: rotateY(180deg);
+    position: relative;
+    overflow: hidden;
   }
+  /* swirly cloud texture overlay using diagonal repeating gradient */
+  .card-back::before {
+    content: '';
+    position: absolute;
+    inset: -20%;
+    background:
+      radial-gradient(ellipse 60% 40% at 30% 40%, rgba(255,255,255,.18) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 70% 60%, rgba(255,255,255,.18) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 30% at 20% 75%, rgba(255,255,255,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 80% 25%, rgba(255,255,255,.12) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  /* The big yellow POKÉMON wordmark at top */
+  .card-back .logo-top,
+  .card-back .logo-bot {
+    position: absolute;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    color: #ffd000;
+    text-shadow:
+      -3px -3px 0 #2a3b8f, 3px -3px 0 #2a3b8f,
+      -3px 3px 0 #2a3b8f, 3px 3px 0 #2a3b8f,
+       0 6px 0 #1a2966, 0 8px 12px rgba(0,0,0,.5);
+    transform: skewX(-8deg);
+    z-index: 2;
+  }
+  .card-back .logo-top { top: 30px; }
+  .card-back .logo-bot {
+    bottom: 30px;
+    transform: skewX(-8deg) rotate(180deg);
+  }
+  /* The Pokéball in the centre */
   .card-back .pokeball-back {
-    width: 200px; height: 200px;
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 180px; height: 180px;
+    transform: translate(-50%, -50%);
     border-radius: 50%;
     background:
-      linear-gradient(180deg, #ee1515 0%, #ee1515 49%, #222 49%, #222 51%, #f0f0f0 51%, #f0f0f0 100%);
+      linear-gradient(180deg, #ee1515 0%, #ee1515 49%, #222 49%, #222 51%, #f4f4f4 51%, #f4f4f4 100%);
     box-shadow:
-      inset -10px -10px 30px rgba(0,0,0,.3),
-      inset 8px 8px 20px rgba(255,255,255,.3),
-      0 6px 20px rgba(0,0,0,.5);
-    position: relative;
+      inset -14px -14px 36px rgba(0,0,0,.45),
+      inset 10px 10px 24px rgba(255,255,255,.35),
+      0 6px 20px rgba(0,0,0,.5),
+      0 0 0 4px #1a2966;
   }
   .card-back .pokeball-back::after {
     content: '';
     position: absolute;
     left: 50%; top: 50%;
-    width: 56px; height: 56px;
+    width: 50px; height: 50px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: #f0f0f0;
-    box-shadow: 0 0 0 8px #222, 0 0 0 12px #f0f0f0;
+    background: #fafafa;
+    box-shadow:
+      inset -3px -3px 6px rgba(0,0,0,.2),
+      0 0 0 7px #222,
+      0 0 0 10px #fafafa;
   }
-  .card-back .label {
-    position: absolute;
-    bottom: 24px;
-    width: 100%;
-    text-align: center;
-    color: #ffcb05;
-    font-family: 'Impact', sans-serif;
-    font-size: 18px;
-    letter-spacing: 4px;
-    text-shadow: 2px 2px 0 #1a2966;
+  /* If a custom image URL was supplied via config */
+  .card-back.has-image {
+    background: none;
+    border: none;
+    box-shadow: 0 20px 40px rgba(0,0,0,.5);
+  }
+  .card-back.has-image::before,
+  .card-back.has-image .logo-top,
+  .card-back.has-image .logo-bot,
+  .card-back.has-image .pokeball-back { display: none; }
+  .card-back.has-image .back-image {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
   }
 
   /* Card front (TCG-styled) */
@@ -489,6 +568,209 @@
     transition: opacity .8s, transform .8s ease-in;
   }
 
+  /* ============================================================
+     NEW DRAMATIC EFFECTS — aura, flash, shockwave, light rays
+     ============================================================ */
+
+  /* Aura — glowing halo around the card during charge & vibrate */
+  .aura {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 380px; height: 530px;
+    transform: translate(-50%, -50%) translateY(-30px);
+    border-radius: 18px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: -1;
+    transition: opacity .8s ease-out;
+  }
+  .scene.opened .aura { opacity: .4; }
+  .scene.charging .aura {
+    opacity: 1;
+    animation: auraPulse 1.4s ease-in-out infinite;
+  }
+  .scene.vibrating .aura {
+    opacity: 1;
+    animation: auraPulseFast .22s ease-in-out infinite;
+  }
+  @keyframes auraPulse {
+    0%, 100% {
+      box-shadow:
+        0 0 50px 18px var(--aura-color, #ffcb05),
+        0 0 120px 40px var(--aura-color, #ffcb05);
+      filter: brightness(1);
+    }
+    50% {
+      box-shadow:
+        0 0 90px 35px var(--aura-color, #ffcb05),
+        0 0 200px 80px var(--aura-color, #ffcb05);
+      filter: brightness(1.5);
+    }
+  }
+  @keyframes auraPulseFast {
+    0%, 100% {
+      box-shadow:
+        0 0 80px 30px var(--aura-color, #ffcb05),
+        0 0 180px 70px var(--aura-color, #ffcb05);
+      filter: brightness(1.5);
+    }
+    50% {
+      box-shadow:
+        0 0 130px 55px var(--aura-color, #ffcb05),
+        0 0 260px 120px var(--aura-color, #ffcb05);
+      filter: brightness(2.2);
+    }
+  }
+  /* Shiny variant — rainbow aura that cycles colors */
+  .scene.shiny-pull .aura {
+    animation: auraRainbowSlow 2.2s linear infinite, auraPulse 1.4s ease-in-out infinite !important;
+  }
+  .scene.shiny-pull.vibrating .aura {
+    animation: auraRainbow 0.6s linear infinite, auraPulseFast .22s ease-in-out infinite !important;
+  }
+  @keyframes auraRainbow {
+    0%   { --aura-color: #ff00ff; }
+    25%  { --aura-color: #ffaa00; }
+    50%  { --aura-color: #00ddff; }
+    75%  { --aura-color: #aaff00; }
+    100% { --aura-color: #ff00ff; }
+  }
+  @keyframes auraRainbowSlow {
+    0%   { --aura-color: #ff00ff; }
+    25%  { --aura-color: #ffaa00; }
+    50%  { --aura-color: #00ddff; }
+    75%  { --aura-color: #aaff00; }
+    100% { --aura-color: #ff00ff; }
+  }
+  .scene.revealed .aura {
+    opacity: 0;
+    transition: opacity 1s;
+  }
+
+  /* Flash overlay — full-screen white burst at reveal moment */
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, white 0%, white 25%, rgba(255,255,255,0) 65%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 90;
+    transform: scale(.2);
+  }
+  .scene.flashing .flash-overlay {
+    animation: flashBurst .9s cubic-bezier(.2,.8,.4,1) forwards;
+  }
+  @keyframes flashBurst {
+    0%   { opacity: 0; transform: scale(.15); }
+    20%  { opacity: 1; transform: scale(2.2); }
+    60%  { opacity: .6; transform: scale(3); }
+    100% { opacity: 0; transform: scale(4); }
+  }
+  /* Shiny: rainbow flash, bigger + rotating */
+  .scene.shiny-pull.flashing .flash-overlay {
+    background: conic-gradient(from 0deg,
+      rgba(255,0,255,1) 0deg, rgba(255,180,0,1) 60deg,
+      rgba(255,255,0,1) 120deg, rgba(0,255,150,1) 180deg,
+      rgba(0,200,255,1) 240deg, rgba(150,0,255,1) 300deg,
+      rgba(255,0,255,1) 360deg);
+    animation: flashBurstShiny 1.4s cubic-bezier(.2,.8,.4,1) forwards;
+  }
+  @keyframes flashBurstShiny {
+    0%   { opacity: 0; transform: scale(.15) rotate(0deg); }
+    20%  { opacity: 1; transform: scale(3) rotate(180deg); }
+    60%  { opacity: .7; transform: scale(4) rotate(360deg); }
+    100% { opacity: 0; transform: scale(5) rotate(720deg); }
+  }
+
+  /* Shiny shockwave — expanding ring */
+  .shockwave {
+    position: fixed;
+    left: 50%; top: 50%;
+    width: 100px; height: 100px;
+    transform: translate(-50%, -50%) scale(0);
+    border: 14px solid rgba(255, 255, 255, .95);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 85;
+    box-shadow: 0 0 80px white, 0 0 220px rgba(255, 0, 255, .85);
+  }
+  .scene.shiny-pull.flashing .shockwave {
+    animation: shockwaveExpand 1.7s ease-out forwards;
+  }
+  @keyframes shockwaveExpand {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0); border-width: 18px; }
+    8%   { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(45); border-width: 2px; }
+  }
+
+  /* Shiny rotating light rays behind the card */
+  .light-rays {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 1400px; height: 1400px;
+    transform: translate(-50%, -50%) translateY(-30px);
+    background: conic-gradient(from 0deg,
+      transparent 0deg, rgba(255,255,180,.55) 3deg, transparent 7deg,
+      transparent 27deg, rgba(255,180,255,.55) 30deg, transparent 34deg,
+      transparent 57deg, rgba(180,255,255,.55) 60deg, transparent 64deg,
+      transparent 87deg, rgba(255,255,180,.55) 90deg, transparent 94deg,
+      transparent 117deg, rgba(255,180,255,.55) 120deg, transparent 124deg,
+      transparent 147deg, rgba(180,255,255,.55) 150deg, transparent 154deg,
+      transparent 177deg, rgba(255,255,180,.55) 180deg, transparent 184deg);
+    pointer-events: none;
+    opacity: 0;
+    z-index: -2;
+    mix-blend-mode: screen;
+    filter: blur(2px);
+  }
+  .scene.shiny-pull.revealed .light-rays {
+    opacity: .9;
+    animation: lightRayRotate 6s linear infinite;
+  }
+  @keyframes lightRayRotate {
+    0%   { transform: translate(-50%, -50%) translateY(-30px) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) translateY(-30px) rotate(360deg); }
+  }
+
+  /* "★ SHINY ★" banner that slams in for shinies */
+  .shiny-banner {
+    position: absolute;
+    left: 50%; top: 60px;
+    transform: translate(-50%, -200px) scale(0);
+    background: linear-gradient(90deg, #ff00ff, #ffaa00, #ffff00, #00ddff, #ff00ff);
+    background-size: 300% 100%;
+    color: white;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    padding: 14px 50px;
+    border-radius: 18px;
+    border: 5px solid white;
+    box-shadow: 0 0 60px rgba(255, 0, 255, .9), 0 10px 30px rgba(0, 0, 0, .5);
+    text-shadow: 0 0 14px white, 4px 4px 0 rgba(0,0,0,.4);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 12;
+    opacity: 0;
+  }
+  .scene.shiny-pull.revealed .shiny-banner {
+    opacity: 1;
+    animation:
+      shinyBannerDrop .75s cubic-bezier(.34,1.56,.64,1) forwards,
+      rainbowShimmer 1.5s linear infinite;
+  }
+  @keyframes shinyBannerDrop {
+    0%   { transform: translate(-50%, -260px) scale(0)   rotate(-20deg); opacity: 0; }
+    60%  { transform: translate(-50%, 0)      scale(1.2) rotate(4deg);   opacity: 1; }
+    100% { transform: translate(-50%, 0)      scale(1)   rotate(0deg);   opacity: 1; }
+  }
+  @keyframes rainbowShimmer {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+  }
+
   /* Completion celebration (full-screen takeover) */
   #complete-overlay {
     position: fixed;
@@ -634,6 +916,9 @@ const cfg = Object.assign({
   animMs: 10000,
   // How long card lingers after the 10s reveal (ms)
   lingerMs: 4000,
+
+  // Optional custom card-back image URL (leave blank to use CSS recreation)
+  cardBackImageUrl: '',
 }, window.STREAM_CONFIG || {});
 
 // URL overrides (e.g. ?shinyOdds=20 for testing)
@@ -752,10 +1037,19 @@ function buildSceneDOM(card) {
   const tc = TYPE_COLORS[card.type] || TYPE_COLORS.Normal;
   const sprites = cardSprites(card.id);
   const artUrl = card.shiny ? sprites.shiny : sprites.standard;
+  // Aura colour: type colour normally, rainbow handled via CSS keyframes for shinies.
+  const auraColor = tc.bg;
+  // Optional custom card-back image URL from config (kept blank by default to
+  // avoid hosting copyrighted artwork).
+  const backImg = cfg.cardBackImageUrl || '';
 
   const scene = document.createElement('div');
   scene.className = 'scene';
   scene.innerHTML = `
+    <!-- effects layered behind the card -->
+    <div class="light-rays"></div>
+    <div class="aura" style="--aura-color: ${auraColor};"></div>
+
     <div class="pack">
       <div class="pack-top">
         <div class="pack-foil"></div>
@@ -771,9 +1065,12 @@ function buildSceneDOM(card) {
     </div>
 
     <div class="card">
-      <div class="card-face card-back">
-        <div class="pokeball-back"></div>
-        <div class="label">POKéMON</div>
+      <div class="card-face card-back${backImg ? ' has-image' : ''}">
+        ${backImg ? `<img class="back-image" src="${backImg}" alt="card back">` : `
+          <div class="logo-top">POKéMON</div>
+          <div class="pokeball-back"></div>
+          <div class="logo-bot">POKéMON</div>
+        `}
       </div>
       <div class="card-face card-front ${card.shiny ? 'shiny' : ''}"
            style="--type-bg:${tc.bg}; --type-border:${tc.border}; --type-text:${tc.text};">
@@ -795,6 +1092,11 @@ function buildSceneDOM(card) {
       <div class="sparkles"></div>
       <div class="new-badge">NEW!</div>
     </div>
+
+    <!-- shiny-only flourishes (hidden by default unless scene.shiny-pull) -->
+    <div class="shiny-banner">★ SHINY ★</div>
+    <div class="shockwave"></div>
+    <div class="flash-overlay"></div>
   `;
   // Sparkles (more for shiny)
   const sparkleCount = card.shiny ? 28 : 12;
@@ -841,46 +1143,68 @@ async function playPack(gifter, card, isNew) {
   const scene = buildSceneDOM(card);
   document.getElementById('stage').appendChild(scene);
 
-  // Preload art
+  // Mark shinies up-front so the rainbow/shiny CSS rules can apply throughout
+  if (card.shiny) scene.classList.add('shiny-pull');
+
+  // Preload art so the reveal doesn't show a blank face
   const sprites = cardSprites(card.id);
   await preload(card.shiny ? sprites.shiny : sprites.standard);
 
-  // Show NEW badge if applicable
+  // Show NEW badge if applicable (every pull is new since no dupes)
   if (isNew) scene.querySelector('.new-badge').classList.add('show');
 
-  // === Timeline (total ~10s) ===
-  // 0–600ms: scene enters
-  // 600–1500ms: pack top cut indicator
-  // 1500–2900ms: pack opens (top flips back)
-  // 2900–3500ms: card back rises (already CSS-transitioned in)
-  // 3500ms: start 7s spin decelerating
-  // 10500ms: reveal lock-in
-  // +lingerMs: exit
+  // === Dramatic Timeline (no front-face peek) =================
+  // 0.0s  → 0.6s : scene drops in
+  // 0.6s  → 1.5s : pack top "cut" indicator appears
+  // 1.5s  → 2.9s : pack opens, top half flips away
+  // 2.9s  → 3.9s : card back rises and settles (still back-facing)
+  // 3.9s  → 6.4s : CHARGING — glowing aura, slow breathing pulse
+  // 6.4s  → 7.4s : VIBRATING — card shakes, aura intensifies
+  // 7.4s  → 8.1s : FLASH — full-screen burst (+ rainbow shockwave for shinies)
+  //                ~200ms into flash, card FLIPS to reveal front
+  // 8.1s  → end  : REVEALED — sparkles burst, shiny banner drops, card floats
+  // +lingerMs    : exit slide
+  // =============================================================
 
   requestAnimationFrame(() => scene.classList.add('enter'));
 
   // Pack cut indicator
   await wait(900);
   const cut = scene.querySelector('.pack-cut');
-  cut.style.opacity = '1';
-  cut.style.transition = 'opacity .2s';
+  if (cut) {
+    cut.style.opacity = '1';
+    cut.style.transition = 'opacity .2s';
+  }
 
-  // Open pack
+  // Pack opens — card back rises into view
   await wait(600);
   scene.classList.add('opened');
 
-  // Wait for card back to settle, then spin
-  await wait(1000); // card back rising
-  scene.classList.add('spinning');
+  // Card back settles in place
+  await wait(1000);
 
-  // Wait for spin to complete (7s)
-  await wait(7000);
+  // Charge phase — aura pulses, card breathes, tension builds
+  scene.classList.add('charging');
+  await wait(2500);
 
-  // Lock-in reveal
-  scene.classList.add('revealed');
-  await wait(900);
+  // Vibrate phase — card shakes nervously, aura intensifies
+  scene.classList.remove('charging');
+  scene.classList.add('vibrating');
+  await wait(1000);
 
-  // Linger
+  // FLASH + REVEAL — flash bursts, card flips mid-flash
+  scene.classList.remove('vibrating');
+  scene.classList.add('flashing');
+  await wait(220);                    // let the flash build before flipping
+  scene.classList.add('revealed');    // card flips 180° to show the front
+  await wait(700);                    // flash finishes fading
+  scene.classList.remove('flashing');
+
+  // Settle into floating state
+  await wait(400);
+  scene.classList.add('settled');
+
+  // Linger so chat has time to react
   await wait(cfg.lingerMs);
 
   // Exit

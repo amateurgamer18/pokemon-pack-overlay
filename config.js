@@ -47,4 +47,13 @@ window.STREAM_CONFIG = {
   // ---- Animation timing (ms) ----
   animMs:   10000,   // total pack opening (~10s as requested)
   lingerMs:  4000,   // how long card sits on screen after reveal
+
+  // ---- Card back image (optional) ----
+  // Leave blank to use the built-in CSS recreation of the classic TCG back
+  // (blue swirl + Pokéball + mirrored POKÉMON wordmarks).
+  // To use your own back art, paste a direct image URL here, e.g. an .png
+  // you've uploaded to your own GitHub repo. NOTE: hosting Nintendo/Pokémon-
+  // licensed artwork on public sites can attract takedown notices — that's
+  // your call.
+  cardBackImageUrl: '',
 };
