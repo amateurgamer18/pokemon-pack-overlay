@@ -438,6 +438,55 @@
   }
   .filter.active .count-badge { background: rgba(0,0,0,.2); }
 
+  /* ===== VARIANT (DEX) TABS — sits above the filter row ===== */
+  .dex-tabs {
+    display: flex;
+    gap: 10px;
+    margin: 4px 0 14px;
+    flex-wrap: wrap;
+  }
+  .dex-tab {
+    flex: 1 1 220px;
+    background: var(--bg-card);
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 22px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: .4px;
+    transition: all .18s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .dex-tab:hover { color: var(--text); border-color: rgba(255,203,5,.4); transform: translateY(-1px); }
+  .dex-tab .dex-tab-count {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 100px;
+    background: rgba(0,0,0,.2);
+    color: var(--text);
+  }
+  .dex-tab.active {
+    background: var(--gold);
+    color: var(--navy-dark);
+    border-color: var(--gold);
+    box-shadow: 0 6px 20px rgba(255,203,5,.4);
+  }
+  .dex-tab.active .dex-tab-count { background: rgba(0,0,0,.18); color: var(--navy-dark); }
+  .dex-tab[data-dex="shiny"].active {
+    background: linear-gradient(135deg, #ff66ff, #b833ff);
+    color: #fff;
+    border-color: #ff66ff;
+    box-shadow: 0 6px 20px rgba(255,102,255,.45);
+  }
+  .dex-tab[data-dex="shiny"].active .dex-tab-count { background: rgba(0,0,0,.25); color: #fff; }
+
   /* ===== POKEMON GRID ===== */
   .grid {
     display: grid;
@@ -1223,8 +1272,9 @@
       <span class="trainer-xp-text" id="trainer-xp-text">0 XP</span>
     </div>
     <div class="stats">
-      <span class="chip">Standard: <strong id="std-count">0</strong></span>
-      <span class="chip shiny">Shiny: <strong id="shiny-count">0</strong> ✦</span>
+      <span class="chip">Standard: <strong id="std-count">0</strong>/151</span>
+      <span class="chip shiny">Shiny: <strong id="shiny-count">0</strong>/151 ✦</span>
+      <span class="chip">Total slots: <strong id="slots-count">0</strong>/302</span>
       <span class="chip legend">Legendary: <strong id="legend-count">0</strong> ⚜</span>
       <span class="chip streak" id="streak-chip" style="display:none;">🔥 <strong id="streak-count">0</strong> day streak</span>
       <span class="chip latest" id="latest"></span>
@@ -1235,12 +1285,23 @@
   <h2 class="section-title"><span class="icon">⏱</span> Recent Pulls <span class="hint">last 10</span></h2>
   <div class="recent-pulls" id="recent-pulls"></div>
 
+  <!-- Variant tabs: swap the grid between standard and shiny dex views -->
+  <div class="dex-tabs" id="dex-tabs">
+    <button class="dex-tab active" data-dex="standard">
+      <span class="dex-tab-label">Standard Dex</span>
+      <span class="dex-tab-count" id="dex-count-standard">0/151</span>
+    </button>
+    <button class="dex-tab" data-dex="shiny">
+      <span class="dex-tab-label">Shiny Dex ✦</span>
+      <span class="dex-tab-count" id="dex-count-shiny">0/151</span>
+    </button>
+  </div>
+
   <!-- Filter tabs -->
   <div class="filters" id="filters">
     <button class="filter active" data-filter="all">All<span class="count-badge" id="badge-all">151</span></button>
     <button class="filter" data-filter="owned">Caught<span class="count-badge" id="badge-owned">0</span></button>
     <button class="filter" data-filter="missing">Missing<span class="count-badge" id="badge-missing">151</span></button>
-    <button class="filter" data-filter="shiny">Shinies<span class="count-badge" id="badge-shiny">0</span></button>
     <button class="filter" data-filter="legendary">Legendary<span class="count-badge" id="badge-legendary">0</span></button>
   </div>
 
@@ -1305,6 +1366,7 @@ const cfg = Object.assign({ firebaseUrl: '' }, window.STREAM_CONFIG || {});
 
 let currentUser = Q.get('viewer') || Q.get('user') || localStorage.getItem('lastViewer') || 'guest';
 let currentFilter = 'all';
+let currentDex = 'standard'; // 'standard' or 'shiny' — variant tab selection
 let collection = {};
 
 /* ============================================================
@@ -1372,28 +1434,16 @@ const TITLES = [
 ];
 
 function calculateXP(col) {
+  // Dual-dex: every variant slot is its own collectible, so sum XP per entry.
+  // Owning regular Charizard (10) AND shiny Charizard (50) = 60 XP combined.
   let xp = 0;
-  // Iterate unique Pokemon (no-dupes means each id appears at most twice:
-  // once regular and once _shiny — we should award XP for the BEST variant
-  // they have of each Pokemon)
-  const bestByPokemon = new Map();
   for (const k of Object.keys(col)) {
     const v = col[k];
     if (!v || typeof v.id !== 'number') continue;
     const isLeg = LEGEND_IDS.has(v.id);
-    const isShinyLeg = v.shiny && isLeg;
-    let rank;
-    if (isShinyLeg) rank = 4;
-    else if (isLeg) rank = 3;
-    else if (v.shiny) rank = 2;
-    else rank = 1;
-    const existing = bestByPokemon.get(v.id) || 0;
-    if (rank > existing) bestByPokemon.set(v.id, rank);
-  }
-  for (const rank of bestByPokemon.values()) {
-    if (rank === 4) xp += XP_VALUES.shinyLegendary;
-    else if (rank === 3) xp += XP_VALUES.legendary;
-    else if (rank === 2) xp += XP_VALUES.shiny;
+    if (v.shiny && isLeg) xp += XP_VALUES.shinyLegendary;
+    else if (isLeg) xp += XP_VALUES.legendary;
+    else if (v.shiny) xp += XP_VALUES.shiny;
     else xp += XP_VALUES.regular;
   }
   return xp;
@@ -1588,48 +1638,62 @@ function calculateStreak(col) {
    ACHIEVEMENTS
    ============================================================ */
 const ACHIEVEMENTS = [
-  { id:'first',    icon:'🎯', name:'First Catch',         desc:'Catch your first Pokémon',         check:(c,col) => c.owned >= 1 },
-  { id:'10',       icon:'📘', name:'Apprentice Trainer',  desc:'Catch 10 different Pokémon',       check:(c,col) => c.owned >= 10 },
-  { id:'25',       icon:'📚', name:'Collector',           desc:'Catch 25 different Pokémon',       check:(c,col) => c.owned >= 25 },
-  { id:'half',     icon:'⚖️', name:'Halfway There',       desc:'Catch 75 different Pokémon',       check:(c,col) => c.owned >= 75 },
-  { id:'almost',   icon:'🔥', name:'Almost There',        desc:'Catch 140 different Pokémon',      check:(c,col) => c.owned >= 140 },
-  { id:'master',   icon:'👑', name:'Pokémon Master',      desc:'Complete the Kanto Pokédex',       check:(c,col) => c.owned >= 151 },
+  // `c` is the stats object (uniqueCount, standardsCount, shiniesCount, ...)
+  // `col` is the unique-id Set — convenient for "do they have any variant of X?"
+  { id:'first',    icon:'🎯', name:'First Catch',         desc:'Catch your first Pokémon',         check:(c,col) => c.uniqueCount >= 1 },
+  { id:'10',       icon:'📘', name:'Apprentice Trainer',  desc:'Catch 10 different Pokémon',       check:(c,col) => c.uniqueCount >= 10 },
+  { id:'25',       icon:'📚', name:'Collector',           desc:'Catch 25 different Pokémon',       check:(c,col) => c.uniqueCount >= 25 },
+  { id:'half',     icon:'⚖️', name:'Halfway There',       desc:'Catch 75 different Pokémon',       check:(c,col) => c.uniqueCount >= 75 },
+  { id:'almost',   icon:'🔥', name:'Almost There',        desc:'Catch 140 different Pokémon',      check:(c,col) => c.uniqueCount >= 140 },
+  { id:'master',   icon:'👑', name:'Pokémon Master',      desc:'Complete the Kanto Pokédex',       check:(c,col) => c.uniqueCount >= 151 },
   { id:'starter-g',icon:'🌿', name:'Grass Starter',       desc:'Catch the Bulbasaur line',         check:(c,col) => [1,2,3].every(id=>col.has(id)) },
   { id:'starter-f',icon:'🔥', name:'Fire Starter',        desc:'Catch the Charmander line',        check:(c,col) => [4,5,6].every(id=>col.has(id)) },
   { id:'starter-w',icon:'💧', name:'Water Starter',       desc:'Catch the Squirtle line',          check:(c,col) => [7,8,9].every(id=>col.has(id)) },
   { id:'eevee',    icon:'🦊', name:'Eevee Evolutionist',  desc:'Catch Eevee + Vaporeon + Jolteon + Flareon', check:(c,col) => [133,134,135,136].every(id=>col.has(id)) },
-  { id:'shiny1',   icon:'✦',  name:'Shiny Hunter',        desc:'Catch your first shiny',           tier:'shiny',  check:(c,col) => c.shinies >= 1 },
-  { id:'shiny3',   icon:'✦',  name:'Triple Shine',        desc:'Catch 3 shinies',                  tier:'shiny',  check:(c,col) => c.shinies >= 3 },
-  { id:'shiny10',  icon:'✦',  name:'Shiny Master',        desc:'Catch 10 shinies',                 tier:'shiny',  check:(c,col) => c.shinies >= 10 },
-  { id:'legend1',  icon:'⚜',  name:'Chase Pull',          desc:'Catch your first legendary',       tier:'legend', check:(c,col) => c.legendaries >= 1 },
+  { id:'shiny1',   icon:'✦',  name:'Shiny Hunter',        desc:'Catch your first shiny',           tier:'shiny',  check:(c,col) => c.shiniesCount >= 1 },
+  { id:'shiny3',   icon:'✦',  name:'Triple Shine',        desc:'Catch 3 shinies',                  tier:'shiny',  check:(c,col) => c.shiniesCount >= 3 },
+  { id:'shiny10',  icon:'✦',  name:'Shiny Master',        desc:'Catch 10 shinies',                 tier:'shiny',  check:(c,col) => c.shiniesCount >= 10 },
+  { id:'shinydex', icon:'✦',  name:'Shiny Dex Complete',  desc:'Catch the shiny variant of all 151', tier:'shiny',  check:(c,col) => c.shiniesCount >= 151 },
+  { id:'legend1',  icon:'⚜',  name:'Chase Pull',          desc:'Catch your first legendary',       tier:'legend', check:(c,col) => c.legendaryCount >= 1 },
   { id:'birds',    icon:'🦅', name:'Legendary Birds',     desc:'Catch Articuno, Zapdos and Moltres', tier:'legend', check:(c,col) => [144,145,146].every(id=>col.has(id)) },
-  { id:'allleg',   icon:'⚜',  name:'Legendary Council',   desc:'Catch all 5 legendaries',          tier:'legend', check:(c,col) => c.legendaries >= 5 },
+  { id:'allleg',   icon:'⚜',  name:'Legendary Council',   desc:'Catch all 5 legendaries',          tier:'legend', check:(c,col) => c.legendaryCount >= 5 },
   { id:'mythic',   icon:'🌟', name:'Mythic Pull',         desc:'Catch a shiny legendary',          tier:'legend', check:(c,col) => c.shinyLegendaries >= 1 },
+  { id:'living',   icon:'🏆', name:'Living Pokédex',      desc:'Fill all 302 slots — standard + shiny of every Pokémon', tier:'legend', check:(c,col) => c.totalSlots >= 302 },
 ];
 
 function computeStats(col) {
-  const owned = ownedIds(col);
-  const shinies = shinyIds(col);
-  let legendaries = 0;
+  // Dual-dex: each Pokemon has two collectible slots — standard and shiny.
+  //   standards: Set of ids where the standard variant is owned
+  //   shinies:   Set of ids where the shiny variant is owned
+  //   unique:    union of the two (drives the 151 prize counter)
+  //   totalSlots: standardsCount + shiniesCount (drives the 302 counter)
+  const standards = new Set();
+  const shinies = new Set();
   let shinyLegendaries = 0;
   for (const k of Object.keys(col)) {
     const v = col[k];
     if (!v || typeof v.id !== 'number') continue;
-    if (LEGEND_IDS.has(v.id)) legendaries++;
-    if (v.shiny && LEGEND_IDS.has(v.id)) shinyLegendaries++;
+    if (v.shiny) {
+      shinies.add(v.id);
+      if (LEGEND_IDS.has(v.id)) shinyLegendaries++;
+    } else {
+      standards.add(v.id);
+    }
   }
-  // Dedupe legendary count by Pokemon id (since shiny variant adds another entry)
-  const legSet = new Set();
-  for (const k of Object.keys(col)) {
-    const v = col[k];
-    if (v && LEGEND_IDS.has(v.id)) legSet.add(v.id);
-  }
+  const unique = new Set([...standards, ...shinies]);
+  const legendarySet = new Set();
+  for (const id of unique) if (LEGEND_IDS.has(id)) legendarySet.add(id);
+
   return {
-    owned: owned.size,
-    ownedSet: owned,
-    shinies: shinies.size,
-    legendaries: legSet.size,
+    standards,
+    shinies,
+    unique,
+    standardsCount: standards.size,
+    shiniesCount: shinies.size,
+    uniqueCount: unique.size,
+    legendaryCount: legendarySet.size,
     shinyLegendaries,
+    totalSlots: standards.size + shinies.size,
   };
 }
 
@@ -1638,15 +1702,21 @@ function computeStats(col) {
    ============================================================ */
 function render() {
   const stats = computeStats(collection);
-  const { owned, ownedSet, shinies, legendaries } = stats;
+  const { standardsCount, shiniesCount, uniqueCount, legendaryCount, totalSlots } = stats;
 
-  document.getElementById('owned-count').textContent = owned;
-  document.getElementById('std-count').textContent = owned - shinies;
-  document.getElementById('shiny-count').textContent = shinies;
-  document.getElementById('legend-count').textContent = legendaries;
-  const pct = Math.round((owned / 151) * 100);
+  // Main bar = unique Pokemon (drives the prize: 151 unique)
+  document.getElementById('owned-count').textContent = uniqueCount;
+  document.getElementById('std-count').textContent = standardsCount;
+  document.getElementById('shiny-count').textContent = shiniesCount;
+  document.getElementById('slots-count').textContent = totalSlots;
+  document.getElementById('legend-count').textContent = legendaryCount;
+  const pct = Math.round((uniqueCount / 151) * 100);
   document.getElementById('pct').textContent = pct + '%';
   document.getElementById('fill').style.width = pct + '%';
+
+  // Variant tab counts
+  document.getElementById('dex-count-standard').textContent = `${standardsCount}/151`;
+  document.getElementById('dex-count-shiny').textContent = `${shiniesCount}/151`;
 
   // Streak
   const streak = calculateStreak(collection);
@@ -1658,12 +1728,17 @@ function render() {
     streakChip.style.display = 'none';
   }
 
-  // Filter badges
+  // Filter badges reflect the ACTIVE variant tab — caught/missing follow
+  // whichever dex you're looking at, so the numbers always match the grid.
+  const activeOwned = currentDex === 'shiny' ? stats.shinies : stats.standards;
+  const activeOwnedCount = activeOwned.size;
   document.getElementById('badge-all').textContent = 151;
-  document.getElementById('badge-owned').textContent = owned;
-  document.getElementById('badge-missing').textContent = 151 - owned;
-  document.getElementById('badge-shiny').textContent = shinies;
-  document.getElementById('badge-legendary').textContent = legendaries;
+  document.getElementById('badge-owned').textContent = activeOwnedCount;
+  document.getElementById('badge-missing').textContent = 151 - activeOwnedCount;
+  // Legendary badge = legendaries owned in the active variant
+  let activeLegendCount = 0;
+  for (const id of activeOwned) if (LEGEND_IDS.has(id)) activeLegendCount++;
+  document.getElementById('badge-legendary').textContent = activeLegendCount;
 
   const latest = latestPull(collection);
   document.getElementById('latest').innerHTML = latest
@@ -1672,8 +1747,8 @@ function render() {
 
   renderTrainerLevel();
   renderRecentPulls();
-  renderGrid(ownedSet, shinies, stats);
-  renderTypeBreakdown(ownedSet);
+  renderGrid(stats);
+  renderTypeBreakdown(stats.unique);
   renderAchievements(stats);
 }
 
@@ -1727,36 +1802,38 @@ function renderRecentPulls() {
   }).join('');
 }
 
-function renderGrid(owned, shinies, stats) {
-  const shinySet = shinyIds(collection);
+function renderGrid(stats) {
+  // Grid is now variant-aware: in 'shiny' dex view, ownership = does the
+  // viewer have the SHINY of this Pokemon (regardless of standard). Tile art
+  // and the .shiny class follow the active dex, not collection state.
+  const isShinyView = currentDex === 'shiny';
+  const ownedForView = isShinyView ? stats.shinies : stats.standards;
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   let visible = 0;
   for (const c of KANTO_CARDS) {
-    const isOwned = owned.has(c.id);
-    const isShiny = shinySet.has(c.id);
+    const isOwned = ownedForView.has(c.id);
     const isLegend = c.legendary;
     if (currentFilter === 'owned' && !isOwned) continue;
     if (currentFilter === 'missing' && isOwned) continue;
-    if (currentFilter === 'shiny' && !isShiny) continue;
     if (currentFilter === 'legendary' && !isLegend) continue;
     visible++;
     const slot = document.createElement('div');
     slot.className = 'slot'
       + (isOwned ? ' owned' : '')
-      + (isShiny ? ' shiny' : '')
+      + (isShinyView ? ' shiny' : '')
       + (isLegend ? ' legendary' : '');
     const typeColor = TYPE_COLORS[c.type]?.bg || '#888';
     slot.style.setProperty('--type-color', typeColor);
     const sprites = cardSprites(c.id);
-    const art = isShiny ? sprites.shiny : sprites.standard;
+    const art = isShinyView ? sprites.shiny : sprites.standard;
     slot.innerHTML = `
       <div class="num">#${String(c.id).padStart(3,'0')}</div>
       <div class="art"><img src="${art}" alt="${escapeHtml(c.name)}" loading="lazy"></div>
       <div class="name">${isOwned ? escapeHtml(c.name) : '???'}</div>
       <div class="badge-row">
         ${isLegend ? '<div class="badge legendary">LEGEND</div>' : ''}
-        ${isShiny ? '<div class="badge shiny">SHINY</div>' : ''}
+        ${isShinyView ? '<div class="badge shiny">SHINY</div>' : ''}
       </div>
     `;
     slot.onclick = () => openModal(c);
@@ -1806,7 +1883,8 @@ function renderTypeBreakdown(owned) {
 function renderAchievements(stats) {
   let unlockedCount = 0;
   const html = ACHIEVEMENTS.map(a => {
-    const unlocked = a.check(stats, stats.ownedSet);
+    // Second arg is the unique-id set so `col.has(id)` checks "any variant owned"
+    const unlocked = a.check(stats, stats.unique);
     if (unlocked) unlockedCount++;
     const tierClass = a.tier ? `tier-${a.tier}` : '';
     return `
@@ -2032,6 +2110,14 @@ document.querySelectorAll('.filter').forEach(b => {
     document.querySelectorAll('.filter').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     currentFilter = b.dataset.filter;
+    render();
+  });
+});
+document.querySelectorAll('.dex-tab').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.dex-tab').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    currentDex = b.dataset.dex; // 'standard' or 'shiny'
     render();
   });
 });
