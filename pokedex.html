@@ -1364,7 +1364,16 @@
 const Q = new URLSearchParams(location.search);
 const cfg = Object.assign({ firebaseUrl: '' }, window.STREAM_CONFIG || {});
 
-let currentUser = Q.get('viewer') || Q.get('user') || localStorage.getItem('lastViewer') || 'guest';
+/* userKey: Kick treats usernames as case-insensitive — `AmateurGamer` and
+   `amateurgamer` are the same account, so we use the lowercased form as the
+   canonical Firebase key. The original casing for display is stored on the
+   collection at `_meta.displayName`. */
+function userKey(name) {
+  return String(name || '').trim().toLowerCase() || 'guest';
+}
+const rawCurrentUser = Q.get('viewer') || Q.get('user') || localStorage.getItem('lastViewer') || 'guest';
+let currentUser = userKey(rawCurrentUser);   // canonical Firebase key (lowercase)
+let currentDisplay = rawCurrentUser;         // shown to viewers — updated from _meta when collection loads
 let currentFilter = 'all';
 let currentDex = 'standard'; // 'standard' or 'shiny' — variant tab selection
 let collection = {};
@@ -1467,21 +1476,22 @@ function getTitleForLevel(level) {
   return title;
 }
 
-document.getElementById('who').textContent = currentUser;
-document.getElementById('user-input').value = currentUser;
+document.getElementById('who').textContent = currentDisplay;
+document.getElementById('user-input').value = currentDisplay;
 localStorage.setItem('lastViewer', currentUser);
 
 /* ============================================================
    DATA FETCHING
    ============================================================ */
 async function fetchCollection(user) {
+  const k = userKey(user);
   if (cfg.firebaseUrl) {
     try {
-      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(user)}.json`);
+      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(k)}.json`);
       if (r.ok) return (await r.json()) || {};
     } catch (e) { console.warn('firebase read failed:', e); }
   }
-  return JSON.parse(localStorage.getItem(`dex:${user}`) || '{}');
+  return JSON.parse(localStorage.getItem(`dex:${k}`) || '{}');
 }
 
 async function fetchAllCollections() {
@@ -1924,7 +1934,9 @@ async function renderLeaderboard() {
       }
       const xp = calculateXP(col);
       const level = getLevelFromXP(xp);
-      return { user, owned: ownedSet.size, shiny, legendary, shinyLeg, xp, level };
+      // `user` is the lowercase Firebase key; pull the original casing from _meta
+      const display = col?._meta?.displayName || user;
+      return { user, display, owned: ownedSet.size, shiny, legendary, shinyLeg, xp, level };
     })
     .filter(r => r.owned >= 1)         // hide empty profiles
     .sort((a, b) => {
@@ -1945,7 +1957,7 @@ async function renderLeaderboard() {
         <li class="rank-${i + 1}" onclick="lookupUser('${escapeHtml(r.user).replace(/'/g, '&apos;')}')" style="cursor:pointer;">
           <span class="rank">${i + 1}</span>
           <span class="lb-user">
-            <span class="lb-level">Lv ${r.level}</span>${escapeHtml(r.user)}${r.user === currentUser ? '<span class="you-tag">YOU</span>' : ''}
+            <span class="lb-level">Lv ${r.level}</span>${escapeHtml(r.display)}${r.user === currentUser ? '<span class="you-tag">YOU</span>' : ''}
           </span>
           <span class="lb-stats">
             <span class="lb-stat"><strong>${r.owned}</strong>/151</span>
@@ -1975,8 +1987,10 @@ async function renderLeaderboard() {
 }
 
 function lookupUser(user) {
+  // Always navigate using the canonical lowercase key in the URL so refreshes
+  // are stable — the page surfaces the display name from _meta after load.
   const url = new URL(location.href);
-  url.searchParams.set('viewer', user);
+  url.searchParams.set('viewer', userKey(user));
   location.href = url.toString();
 }
 
@@ -2094,6 +2108,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
    ============================================================ */
 async function load() {
   collection = await fetchCollection(currentUser);
+  // Surface the original casing if the overlay stamped one onto the collection
+  const stored = collection?._meta?.displayName;
+  if (stored) {
+    currentDisplay = stored;
+    document.getElementById('who').textContent = stored;
+    document.getElementById('user-input').value = stored;
+  }
   render();
   // Leaderboard fetched separately and rendered after — needs ALL collections
   renderLeaderboard();

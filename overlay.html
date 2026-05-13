@@ -1253,6 +1253,9 @@
     <button onclick="debugSetCount(149)">Test: 149 caught</button>
     <button onclick="debugCompletion()">Test: completion FX</button>
   </div>
+  <div class="row">
+    <button onclick="debugWipeAll()" style="background:#a02020;color:#fff;">⚠ WIPE ALL viewer data</button>
+  </div>
 </div>
 
 <script src="cards.js"></script>
@@ -1555,18 +1558,30 @@ const Sfx = {
 Sfx.init();
 
 /* ============================================================
+   USER KEY NORMALISATION
+   Kick treats usernames as case-insensitive (`AmateurGamer` and
+   `amateurgamer` are the same account). We use the lowercased
+   form as the Firebase key everywhere, and stash the original
+   casing inside `/collections/<key>/_meta/displayName` so the
+   dex can render pretty case on screen.
+   ============================================================ */
+function userKey(name) {
+  return String(name || '').trim().toLowerCase() || 'anonymous';
+}
+
+/* ============================================================
    STORAGE — Firebase REST (optional) + localStorage fallback
    ============================================================ */
 const Store = {
   async getCollection(user) {
-    const key = `dex:${user}`;
-    const local = JSON.parse(localStorage.getItem(key) || '{}');
+    const k = userKey(user);
+    const local = JSON.parse(localStorage.getItem(`dex:${k}`) || '{}');
     if (!cfg.firebaseUrl) return local;
     try {
-      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(user)}.json`);
+      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(k)}.json`);
       const remote = await r.json();
       const merged = Object.assign({}, local, remote || {});
-      localStorage.setItem(key, JSON.stringify(merged));
+      localStorage.setItem(`dex:${k}`, JSON.stringify(merged));
       return merged;
     } catch (e) {
       console.warn('Firebase read failed, using local:', e);
@@ -1574,40 +1589,43 @@ const Store = {
     }
   },
   async savePull(user, card) {
-    const key = `dex:${user}`;
-    const local = JSON.parse(localStorage.getItem(key) || '{}');
+    const k = userKey(user);
+    const local = JSON.parse(localStorage.getItem(`dex:${k}`) || '{}');
     const slotKey = `${card.id}${card.shiny ? '_shiny' : ''}`;
     local[slotKey] = { id: card.id, shiny: card.shiny, name: card.name, at: Date.now() };
-    localStorage.setItem(key, JSON.stringify(local));
+    localStorage.setItem(`dex:${k}`, JSON.stringify(local));
     if (!cfg.firebaseUrl) return;
     try {
-      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(user)}/${slotKey}.json`, {
-        method: 'PUT',
+      // PATCH the root with {_meta + new slot} so display name and pull land in one round-trip
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(k)}.json`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(local[slotKey]),
+        body: JSON.stringify({ [slotKey]: local[slotKey], _meta: { displayName: String(user || '').trim() || k } }),
       });
     } catch (e) {
       console.warn('Firebase write failed:', e);
     }
   },
   async getCredits(user) {
-    const local = parseInt(localStorage.getItem(`credits:${user}`) || '0') || 0;
+    const k = userKey(user);
+    const local = parseInt(localStorage.getItem(`credits:${k}`) || '0') || 0;
     if (!cfg.firebaseUrl) return local;
     try {
-      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/credits/${encodeURIComponent(user)}.json`);
+      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/credits/${encodeURIComponent(k)}.json`);
       const remote = await r.json();
       const v = typeof remote === 'number' ? remote : local;
-      localStorage.setItem(`credits:${user}`, String(v));
+      localStorage.setItem(`credits:${k}`, String(v));
       return v;
     } catch (e) {
       return local;
     }
   },
   async setCredits(user, n) {
-    localStorage.setItem(`credits:${user}`, String(n));
+    const k = userKey(user);
+    localStorage.setItem(`credits:${k}`, String(n));
     if (!cfg.firebaseUrl) return;
     try {
-      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/credits/${encodeURIComponent(user)}.json`, {
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/credits/${encodeURIComponent(k)}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(n),
@@ -1615,21 +1633,37 @@ const Store = {
     } catch (e) { console.warn('credit write failed:', e); }
   },
   async markCompleter(user) {
-    const key = `completers`;
-    const local = JSON.parse(localStorage.getItem(key) || '[]');
-    if (!local.find(x => x.user === user)) {
-      local.push({ user, at: Date.now() });
-      localStorage.setItem(key, JSON.stringify(local));
+    const k = userKey(user);
+    const display = String(user || '').trim() || k;
+    const local = JSON.parse(localStorage.getItem('completers') || '[]');
+    if (!local.find(x => userKey(x.user) === k)) {
+      local.push({ user: display, at: Date.now() });
+      localStorage.setItem('completers', JSON.stringify(local));
     }
     if (!cfg.firebaseUrl) return;
     try {
-      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/completers/${encodeURIComponent(user)}.json`, {
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/completers/${encodeURIComponent(k)}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user, at: Date.now() }),
+        body: JSON.stringify({ user: display, at: Date.now() }),
       });
     } catch (e) { console.warn(e); }
-  }
+  },
+  async wipeAll() {
+    // Hard reset — used after the case-sensitivity migration. Confirm at the
+    // call site since this is destructive.
+    localStorage.removeItem('completers');
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith('dex:') || k.startsWith('credits:')) localStorage.removeItem(k);
+    }
+    if (!cfg.firebaseUrl) return;
+    const base = cfg.firebaseUrl.replace(/\/$/,'');
+    await Promise.all([
+      fetch(`${base}/collections.json`, { method: 'DELETE' }),
+      fetch(`${base}/credits.json`, { method: 'DELETE' }),
+      fetch(`${base}/completers.json`, { method: 'DELETE' }),
+    ]);
+  },
 };
 
 /* ============================================================
@@ -2153,14 +2187,15 @@ function debugShiny() { FORCE_NEXT_SHINY = true; dbgStatus('next pull will be sh
 function debugLegendary() { FORCE_NEXT_LEGENDARY = true; dbgStatus('next pull will be legendary'); }
 function debugShinyLegendary() { FORCE_NEXT_SHINY = true; FORCE_NEXT_LEGENDARY = true; dbgStatus('next pull: SHINY LEGENDARY ✨⚜'); }
 function debugReset() {
-  const u = document.getElementById('dbg-user').value || 'testviewer';
+  const u = userKey(document.getElementById('dbg-user').value || 'testviewer');
   localStorage.removeItem(`dex:${u}`);
   localStorage.removeItem(`credits:${u}`);
   dbgStatus(`wiped local dex + credits for ${u}`);
 }
 function debugSetCount(n) {
-  const u = document.getElementById('dbg-user').value || 'testviewer';
-  const col = {};
+  const raw = document.getElementById('dbg-user').value || 'testviewer';
+  const u = userKey(raw);
+  const col = { _meta: { displayName: raw } };
   for (let i = 1; i <= n; i++) {
     col[i] = { id: i, shiny: false, name: KANTO_CARDS[i-1].name, at: Date.now() };
   }
@@ -2171,6 +2206,17 @@ async function debugCompletion() {
   const u = document.getElementById('dbg-user').value || 'testviewer';
   await celebrate(u);
 }
+async function debugWipeAll() {
+  if (!confirm('WIPE ALL viewer data?\n\nThis deletes /collections, /credits and /completers from Firebase AND clears localStorage for every test viewer. Use this once after switching to the lowercase-key scheme. Cannot be undone.')) return;
+  dbgStatus('wiping all viewer data…');
+  try {
+    await Store.wipeAll();
+    dbgStatus('✓ all viewer data wiped — refresh the dex to confirm');
+  } catch (e) {
+    console.error(e);
+    dbgStatus(`wipe failed: ${e.message}`);
+  }
+}
 window.debugTrigger = debugTrigger;
 window.debugShiny = debugShiny;
 window.debugLegendary = debugLegendary;
@@ -2178,6 +2224,7 @@ window.debugShinyLegendary = debugShinyLegendary;
 window.debugReset = debugReset;
 window.debugSetCount = debugSetCount;
 window.debugCompletion = debugCompletion;
+window.debugWipeAll = debugWipeAll;
 
 // Hotkey for testing in a real browser (not OBS): press G to fire a test gift
 window.addEventListener('keydown', (e) => {
