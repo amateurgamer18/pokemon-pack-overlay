@@ -2123,7 +2123,15 @@ function handleSbMessage(msg) {
     if (data.name === cfg.customEventName) {
       const args = data.arguments || {};
       const user = args.user || args.gifter || args.username || args.userName || 'Anonymous';
-      const count = parseInt(args.count || args.gifts || args.quantity || args.giftCount || 1) || 1;
+      // Count: prefer args.count, else count Kick's indexed mass-gift recipients
+      // (recipient.0.userId, recipient.1.userId, ...), else default to 1 for
+      // singles, subs and resubs.
+      let count = parseInt(args.count || args.gifts || args.quantity || args.giftCount || 0) || 0;
+      if (count <= 0) {
+        let i = 0;
+        while (args[`recipient.${i}.userId`]) i++;
+        count = i > 0 ? i : 1;
+      }
       dbgStatus(`action ${data.name}: ${user} x${count}`);
       enqueueGift(user, count);
     }
