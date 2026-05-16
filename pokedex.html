@@ -590,6 +590,26 @@
     color: var(--text-dim);
     font-weight: 600;
   }
+  /* Source badge — top-left corner of each owned tile */
+  .slot .source-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 14px;
+    background: rgba(0,0,0,.6);
+    padding: 3px 6px;
+    border-radius: 8px;
+    z-index: 3;
+    line-height: 1;
+    backdrop-filter: blur(4px);
+  }
+  .slot .source-badge.caught {
+    background: linear-gradient(135deg, #22aa50, #167837);
+    box-shadow: 0 0 8px rgba(34,170,80,.5);
+  }
+  .slot.caught {
+    border-color: rgba(34,170,80,.5);
+  }
   .slot .badge-row {
     position: absolute;
     top: 8px; right: 8px;
@@ -1812,6 +1832,14 @@ function renderRecentPulls() {
   }).join('');
 }
 
+// Return the source of an owned entry: 'caught' (wild spawn) or 'packed' (default).
+function entrySource(id, isShinyView) {
+  const slotKey = isShinyView ? `${id}_shiny` : String(id);
+  const entry = collection[slotKey];
+  if (!entry) return null;
+  return entry.source || 'packed';
+}
+
 function renderGrid(stats) {
   // Grid is now variant-aware: in 'shiny' dex view, ownership = does the
   // viewer have the SHINY of this Pokemon (regardless of standard). Tile art
@@ -1829,16 +1857,25 @@ function renderGrid(stats) {
     if (currentFilter === 'legendary' && !isLegend) continue;
     visible++;
     const slot = document.createElement('div');
+    const source = isOwned ? entrySource(c.id, isShinyView) : null;
     slot.className = 'slot'
       + (isOwned ? ' owned' : '')
       + (isShinyView ? ' shiny' : '')
-      + (isLegend ? ' legendary' : '');
+      + (isLegend ? ' legendary' : '')
+      + (source === 'caught' ? ' caught' : '');
     const typeColor = TYPE_COLORS[c.type]?.bg || '#888';
     slot.style.setProperty('--type-color', typeColor);
     const sprites = cardSprites(c.id);
     const art = isShinyView ? sprites.shiny : sprites.standard;
+    // Source badge — small icon top-left so legendary/shiny badges (top-right) don't overlap
+    const sourceBadge = source === 'caught'
+      ? '<div class="source-badge caught" title="Caught from a wild spawn">🌿</div>'
+      : source === 'packed'
+        ? '<div class="source-badge packed" title="Pulled from a pack">📦</div>'
+        : '';
     slot.innerHTML = `
       <div class="num">#${String(c.id).padStart(3,'0')}</div>
+      ${sourceBadge}
       <div class="art"><img src="${art}" alt="${escapeHtml(c.name)}" loading="lazy"></div>
       <div class="name">${isOwned ? escapeHtml(c.name) : '???'}</div>
       <div class="badge-row">

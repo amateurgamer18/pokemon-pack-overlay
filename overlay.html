@@ -49,6 +49,204 @@
   #banner.show { transform: translateX(-50%) translateY(0); }
   #banner .sub { font-size: 18px; font-weight: 600; opacity: .85; margin-top: 4px; }
 
+  /* ===================== WILD POKÉMON SPAWN ===================== */
+  /* No card UI — the Pokémon itself is the focal point.
+     Sprite is an animated GIF (PokeAPI Showdown mirror) that roams the
+     bottom-third of the overlay. Flying-type Pokémon float higher and
+     have a gentler vertical sway. */
+
+  /* Big drop-in banner that flashes for the first ~3 seconds of a spawn */
+  #wild-spawn-intro {
+    position: fixed;
+    top: 28%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(.6);
+    z-index: 25;
+    padding: 18px 36px;
+    background: linear-gradient(135deg, rgba(34,170,80,.95), rgba(22,120,55,.98));
+    color: #ffcb05;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 44px;
+    letter-spacing: 3px;
+    text-shadow: 3px 3px 0 #000, 0 0 30px rgba(255,203,5,.6);
+    border: 4px solid #ffcb05;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.6), 0 0 60px rgba(34,170,80,.5);
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #wild-spawn-intro.show {
+    animation: introDrop 1.2s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  #wild-spawn-intro.fade { animation: introFade .9s ease-in forwards; }
+  @keyframes introDrop {
+    0%   { transform: translate(-50%, -50%) scale(.4) rotate(-12deg); opacity: 0; }
+    60%  { transform: translate(-50%, -50%) scale(1.12) rotate(2deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0); opacity: 1; }
+  }
+  @keyframes introFade {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -120%) scale(.8); }
+  }
+
+  /* The roaming Pokémon sprite itself */
+  #wild-spawn-sprite {
+    position: fixed;
+    bottom: 60px;
+    left: -120px;
+    width: 130px;
+    height: 130px;
+    z-index: 20;
+    pointer-events: none;
+    transition: opacity .4s;
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,.6));
+  }
+  #wild-spawn-sprite img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated; /* keep the GIF crisp at large size */
+  }
+  /* Ground-walker path: drifts left-to-right, pauses, turns, walks back */
+  #wild-spawn-sprite.walking {
+    animation: walkPath 18s ease-in-out infinite;
+  }
+  @keyframes walkPath {
+    0%   { left: -120px; transform: scaleX(1); }
+    8%   { left: 5vw; transform: scaleX(1); }
+    42%  { left: calc(100vw - 250px); transform: scaleX(1); }
+    50%  { left: calc(100vw - 250px); transform: scaleX(-1); }
+    58%  { left: calc(100vw - 350px); transform: scaleX(-1); }
+    92%  { left: 5vw; transform: scaleX(-1); }
+    100% { left: -120px; transform: scaleX(-1); }
+  }
+  /* Flying path: starts higher, sways vertically while drifting */
+  #wild-spawn-sprite.flying {
+    bottom: 40%;
+    animation: flyPath 16s ease-in-out infinite, flyBob 3.5s ease-in-out infinite;
+  }
+  @keyframes flyPath {
+    0%   { left: -120px; transform: scaleX(1); }
+    8%   { left: 5vw; transform: scaleX(1); }
+    42%  { left: calc(100vw - 250px); transform: scaleX(1); }
+    50%  { left: calc(100vw - 250px); transform: scaleX(-1); }
+    92%  { left: 5vw; transform: scaleX(-1); }
+    100% { left: -120px; transform: scaleX(-1); }
+  }
+  @keyframes flyBob {
+    0%, 100% { margin-top: 0; }
+    50%      { margin-top: -40px; }
+  }
+  /* Catch — sprite freezes, shrinks into the pokéball, gold sparkle */
+  #wild-spawn-sprite.caught {
+    animation: catchShrink .55s cubic-bezier(.6,-0.3,.7,.1) forwards !important;
+    filter: drop-shadow(0 0 16px #ffcb05);
+  }
+  @keyframes catchShrink {
+    0%   { transform: scale(1) rotate(0); opacity: 1; }
+    60%  { transform: scale(.5) rotate(180deg); opacity: .9; }
+    100% { transform: scale(.05) rotate(360deg); opacity: 0; }
+  }
+  /* Flee — sprite slumps and runs/flies off in the direction it was facing */
+  #wild-spawn-sprite.fled {
+    animation: fleeOff .9s ease-in forwards !important;
+    opacity: .6;
+  }
+  @keyframes fleeOff {
+    0%   { transform: translateX(0) scale(1); opacity: 1; }
+    100% { transform: translateX(-50vw) scale(.4); opacity: 0; }
+  }
+
+  /* Pulsing chat hint anchored at the bottom-center */
+  #wild-spawn-hint {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 22;
+    background: rgba(0,0,0,.82);
+    color: #fff;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    padding: 10px 28px;
+    border: 3px solid #ffcb05;
+    border-radius: 100px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.6);
+    box-shadow: 0 0 24px rgba(255,203,5,.45), 0 6px 18px rgba(0,0,0,.5);
+    white-space: nowrap;
+    animation: hintPulse 1.4s ease-in-out infinite;
+  }
+  #wild-spawn-hint strong { color: #ffcb05; }
+  @keyframes hintPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50%      { transform: translateX(-50%) scale(1.07); }
+  }
+
+  /* Floating status messages — "X missed!" / "X caught it!" / "Pokémon fled!" */
+  #wild-spawn-status {
+    position: fixed;
+    bottom: 220px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 23;
+    color: #fff;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 30px;
+    letter-spacing: 2px;
+    text-shadow: 3px 3px 0 #000, 0 0 16px rgba(0,0,0,.8);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity .3s ease, transform .3s ease;
+  }
+  #wild-spawn-status.show {
+    opacity: 1;
+    animation: statusFlash 1.6s ease-out forwards;
+  }
+  @keyframes statusFlash {
+    0%   { transform: translateX(-50%) translateY(20px) scale(.6); opacity: 0; }
+    25%  { transform: translateX(-50%) translateY(0) scale(1.15); opacity: 1; }
+    75%  { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-30px) scale(.95); opacity: 0; }
+  }
+
+  /* Pokéball thrown to capture — arcs from off-screen right toward sprite */
+  #pokeball-throw {
+    position: fixed;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    z-index: 21;
+    background:
+      linear-gradient(180deg, #ee1515 0%, #ee1515 47%, #000 47%, #000 53%, #fff 53%, #fff 100%);
+    border: 4px solid #000;
+    box-shadow: 0 8px 18px rgba(0,0,0,.55);
+    pointer-events: none;
+    display: none;
+  }
+  #pokeball-throw::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 16px; height: 16px;
+    margin: -8px 0 0 -8px;
+    background: #fff;
+    border: 3px solid #000;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 2px #ccc;
+  }
+  #pokeball-throw.throw {
+    display: block;
+    animation: ballArc .8s cubic-bezier(.3,1.6,.7,1) forwards;
+  }
+  @keyframes ballArc {
+    0%   { right: -80px; bottom: 50%; transform: rotate(0) scale(.5); opacity: 0; }
+    15%  { opacity: 1; }
+    100% { right: 50%; bottom: 100px; transform: rotate(900deg) scale(1.4); opacity: 1; }
+  }
+
   /* ---------- Pack & Card container ---------- */
   .scene {
     width: 480px;
@@ -1254,6 +1452,9 @@
     <button onclick="debugCompletion()">Test: completion FX</button>
   </div>
   <div class="row">
+    <button onclick="debugWildSpawn()">🌿 Force wild spawn now</button>
+  </div>
+  <div class="row">
     <button onclick="debugWipeAll()" style="background:#a02020;color:#fff;">⚠ WIPE ALL viewer data</button>
   </div>
 </div>
@@ -2184,6 +2385,323 @@ function handleSbMessage(msg) {
 connect();
 
 /* ============================================================
+   WILD POKÉMON SPAWN SYSTEM
+   The overlay schedules auto-spawns + responds to manual !spawn requests
+   from Streamer.bot (which writes /spawn_request = true in Firebase).
+   Catching itself is handled by the !pokecatch action — this code just
+   renders the spawn visual, listens for changes, animates capture/flee,
+   and tidies up Firebase state.
+   ============================================================ */
+let wildSpawnState = null;       // { spawnId, pokemonId, expiresAt }
+let wildSpawnTimer = null;       // setTimeout id for next auto-spawn
+let wildSpawnPollTimer = null;   // setInterval id watching /active_spawn + /spawn_request
+let wildSpawnResolutionPoll = null;
+let spawnsThisSession = 0;
+let wildSpawnLastSeenAttempt = '';
+let wildSpawnTimerInterval = null;
+
+function wsConfig() {
+  return Object.assign({
+    enabled: true,
+    firstSpawnMinMs:  5 * 60 * 1000,
+    firstSpawnMaxMs: 60 * 60 * 1000,
+    intervalMinMs:   60 * 60 * 1000,
+    intervalMaxMs:  180 * 60 * 1000,
+    timeoutMs:        5 * 60 * 1000,
+    maxPerSession: 3,
+  }, cfg.wildSpawn || {});
+}
+
+function pickWildPokemon() {
+  // Random 1-151 from KANTO_CARDS
+  const card = KANTO_CARDS[Math.floor(Math.random() * KANTO_CARDS.length)];
+  return card;
+}
+
+// forced=true bypasses the maxPerSession cap. Used by manual !spawn requests
+// so the broadcaster can keep dropping wild Pokémon after the auto cap.
+async function triggerWildSpawn(forced = false) {
+  const ws = wsConfig();
+  if (!ws.enabled) return;
+  if (!forced && spawnsThisSession >= ws.maxPerSession) {
+    console.log('[wildspawn] auto-cap reached — use !spawn to force more');
+    return;
+  }
+  if (busy || wildSpawnState) {
+    // Pack opening or spawn already active — retry in 10s
+    console.log('[wildspawn] deferred (busy or active spawn)');
+    setTimeout(() => triggerWildSpawn(forced), 10000);
+    return;
+  }
+
+  const card = pickWildPokemon();
+  if (!card) return;
+  const now = Date.now();
+  const spawn = {
+    spawnId: 'sp_' + now,
+    pokemonId: card.id,
+    pokemonName: card.name,
+    startedAt: now,
+    expiresAt: now + ws.timeoutMs,
+    winner: null,
+  };
+
+  // Write /active_spawn to Firebase so !pokecatch can see it
+  if (cfg.firebaseUrl) {
+    try {
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/active_spawn.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(spawn),
+      });
+    } catch (e) {
+      console.warn('[wildspawn] /active_spawn write failed:', e);
+      return;
+    }
+  }
+
+  wildSpawnState = spawn;
+  if (!forced) spawnsThisSession++;
+  renderWildSpawn(card, spawn);
+  startResolutionPoll(spawn);
+  const tag = forced ? '(forced)' : `(${spawnsThisSession}/${ws.maxPerSession})`;
+  dbgStatus(`Wild ${card.name} spawned ${tag}`);
+}
+
+// Pokémon that fly or hover. They use the flyPath/flyBob animations so they
+// drift around the middle of the overlay instead of walking the bottom.
+const FLYING_POKEMON_IDS = new Set([
+  6,   // Charizard
+  12,  // Butterfree
+  15,  // Beedrill
+  16, 17, 18,  // Pidgey line
+  21, 22,      // Spearow line
+  41, 42,      // Zubat line
+  49,          // Venomoth
+  83,          // Farfetch'd
+  123,         // Scyther
+  142,         // Aerodactyl
+  144, 145, 146,  // Articuno / Zapdos / Moltres
+  149,         // Dragonite
+]);
+
+// Animated GIF sprite (PokeAPI's Showdown mirror — pre-animated, breathing).
+// Falls back to the standard static sprite if the GIF 404s.
+function showdownSpriteUrl(id) {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${id}.gif`;
+}
+
+function renderWildSpawn(card, spawn) {
+  // Tear down any leftover wild-spawn DOM nodes first
+  ['wild-spawn-intro', 'wild-spawn-sprite', 'wild-spawn-hint', 'wild-spawn-status']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.remove(); });
+
+  const isFlying = FLYING_POKEMON_IDS.has(card.id);
+  const spriteUrl = showdownSpriteUrl(card.id);
+  const fallback = (cardSprites(card.id) || {}).standard || '';
+
+  // ---- Dramatic intro banner — flashes for ~3 seconds then fades up
+  const intro = document.createElement('div');
+  intro.id = 'wild-spawn-intro';
+  intro.textContent = `🌿 A WILD ${card.name.toUpperCase()} APPEARED!`;
+  document.body.appendChild(intro);
+  requestAnimationFrame(() => intro.classList.add('show'));
+  setTimeout(() => {
+    intro.classList.remove('show');
+    intro.classList.add('fade');
+    setTimeout(() => intro.remove(), 900);
+  }, 2800);
+
+  // ---- The roaming sprite itself
+  const sprite = document.createElement('div');
+  sprite.id = 'wild-spawn-sprite';
+  sprite.className = isFlying ? 'flying' : 'walking';
+  sprite.innerHTML =
+    `<img src="${spriteUrl}" alt="${escapeHtml(card.name)}" ` +
+    `onerror="this.onerror=null;this.src='${fallback}';">`;
+  document.body.appendChild(sprite);
+
+  // ---- Pulsing "!pokecatch" hint anchored at the bottom-center
+  const hint = document.createElement('div');
+  hint.id = 'wild-spawn-hint';
+  hint.innerHTML = `💬 Type <strong>!pokecatch</strong> to catch it!`;
+  document.body.appendChild(hint);
+
+  // ---- Status line container (populated by showSpawnStatus on attempts)
+  const status = document.createElement('div');
+  status.id = 'wild-spawn-status';
+  document.body.appendChild(status);
+}
+
+// Flash a "X missed!" / "X caught it!" line above the sprite, auto-fades.
+function showSpawnStatus(text) {
+  const status = document.getElementById('wild-spawn-status');
+  if (!status) return;
+  status.textContent = text;
+  // Restart the flash animation by toggling the class
+  status.classList.remove('show');
+  void status.offsetWidth; // force reflow so the animation re-runs
+  status.classList.add('show');
+}
+
+function startResolutionPoll(spawn) {
+  clearInterval(wildSpawnResolutionPoll);
+  wildSpawnLastSeenAttempt = '';
+  wildSpawnResolutionPoll = setInterval(async () => {
+    if (!cfg.firebaseUrl) {
+      clearInterval(wildSpawnResolutionPoll);
+      return;
+    }
+    let current = null;
+    try {
+      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/active_spawn.json`);
+      if (r.ok) current = await r.json();
+    } catch (e) { return; }
+
+    // Spawn was cleared externally?
+    if (!current || current.spawnId !== spawn.spawnId) {
+      clearInterval(wildSpawnResolutionPoll);
+      await clearWildSpawn();
+      return;
+    }
+
+    // Newest attempt → flash a status line
+    if (current.attempts) {
+      const entries = Object.entries(current.attempts);
+      entries.sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
+      const newest = entries[entries.length - 1];
+      if (newest) {
+        const sig = newest[0] + ':' + newest[1].at;
+        if (sig !== wildSpawnLastSeenAttempt) {
+          wildSpawnLastSeenAttempt = sig;
+          const name = newest[1].displayName || newest[0];
+          showSpawnStatus(newest[1].success
+            ? `🎉 ${name} caught it!`
+            : `💨 ${name} missed!`);
+        }
+      }
+    }
+
+    // Winner claimed → animate capture
+    if (current.winner) {
+      clearInterval(wildSpawnResolutionPoll);
+      await handleSpawnWin(spawn, current.winner);
+      return;
+    }
+
+    // Timeout → flee
+    if (Date.now() > spawn.expiresAt) {
+      clearInterval(wildSpawnResolutionPoll);
+      await handleSpawnFlee(spawn);
+      return;
+    }
+  }, 1200);
+}
+
+async function handleSpawnWin(spawn, winnerName) {
+  const sprite = document.getElementById('wild-spawn-sprite');
+  const hint = document.getElementById('wild-spawn-hint');
+  if (hint) hint.remove();
+
+  // Pause the roaming animation — sprite freezes wherever it is when caught
+  if (sprite) sprite.style.animation = 'none';
+
+  // Throw the pokéball
+  const pb = document.createElement('div');
+  pb.id = 'pokeball-throw';
+  document.body.appendChild(pb);
+  requestAnimationFrame(() => pb.classList.add('throw'));
+  await wait(700);
+
+  // Sprite shrinks into the ball
+  if (sprite) sprite.classList.add('caught');
+  await wait(550);
+  if (pb.parentElement) pb.remove();
+
+  // Big celebration line
+  showSpawnStatus(`🎉 ${winnerName} CAUGHT IT!`);
+  await wait(2200);
+  await clearWildSpawn();
+}
+
+async function handleSpawnFlee(spawn) {
+  const sprite = document.getElementById('wild-spawn-sprite');
+  const hint = document.getElementById('wild-spawn-hint');
+  if (hint) hint.remove();
+
+  showSpawnStatus('💨 The Pokémon fled!');
+  if (sprite) {
+    sprite.style.animation = 'none';
+    sprite.classList.add('fled');
+  }
+  await wait(1500);
+  await clearWildSpawn();
+}
+
+async function clearWildSpawn() {
+  clearInterval(wildSpawnTimerInterval);
+  clearInterval(wildSpawnResolutionPoll);
+  wildSpawnState = null;
+
+  // Remove all wild-spawn DOM
+  ['wild-spawn-intro', 'wild-spawn-sprite', 'wild-spawn-hint', 'wild-spawn-status']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.remove(); });
+
+  if (cfg.firebaseUrl) {
+    try {
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/active_spawn.json`, { method: 'DELETE' });
+    } catch (e) {}
+  }
+  scheduleNextWildSpawn();
+}
+
+function scheduleNextWildSpawn() {
+  clearTimeout(wildSpawnTimer);
+  const ws = wsConfig();
+  if (!ws.enabled) return;
+  if (spawnsThisSession >= ws.maxPerSession) {
+    console.log('[wildspawn] auto-cap reached, no further auto-spawns scheduled');
+    return;
+  }
+  const delay = ws.intervalMinMs + Math.random() * (ws.intervalMaxMs - ws.intervalMinMs);
+  wildSpawnTimer = setTimeout(() => triggerWildSpawn(false), delay);
+  console.log(`[wildspawn] next auto-spawn in ${Math.round(delay / 60000)} min`);
+}
+
+async function pollSpawnRequest() {
+  if (!cfg.firebaseUrl) return;
+  try {
+    const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/spawn_request.json`);
+    if (!r.ok) return;
+    const val = await r.json();
+    if (val === true) {
+      // Clear the request first so we don't re-trigger on the next poll
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/spawn_request.json`, { method: 'DELETE' });
+      // forced=true so manual !spawn bypasses the auto-spawn session cap
+      triggerWildSpawn(true);
+    }
+  } catch (e) {}
+}
+
+function startWildSpawnSystem() {
+  const ws = wsConfig();
+  if (!ws.enabled) {
+    console.log('[wildspawn] disabled in config');
+    return;
+  }
+  // Poll for manual !spawn requests every 3 seconds
+  clearInterval(wildSpawnPollTimer);
+  wildSpawnPollTimer = setInterval(pollSpawnRequest, 3000);
+  // First auto-spawn — random delay within the first hour (configurable range)
+  const firstDelay = ws.firstSpawnMinMs +
+    Math.random() * (ws.firstSpawnMaxMs - ws.firstSpawnMinMs);
+  setTimeout(() => triggerWildSpawn(false), firstDelay);
+  console.log(`[wildspawn] system started — first spawn in ${Math.round(firstDelay / 60000)} min`);
+}
+
+startWildSpawnSystem();
+
+/* ============================================================
    DEBUG HELPERS (only visible with ?debug=1)
    ============================================================ */
 function debugTrigger() {
@@ -2214,6 +2732,15 @@ async function debugCompletion() {
   const u = document.getElementById('dbg-user').value || 'testviewer';
   await celebrate(u);
 }
+function debugWildSpawn() {
+  // Bypass the session cap and busy check for testing
+  spawnsThisSession = 0;
+  if (wildSpawnState) {
+    dbgStatus('wild spawn already active — wait for it to resolve');
+    return;
+  }
+  triggerWildSpawn();
+}
 async function debugWipeAll() {
   if (!confirm('WIPE ALL viewer data?\n\nThis deletes /collections, /credits and /completers from Firebase AND clears localStorage for every test viewer. Use this once after switching to the lowercase-key scheme. Cannot be undone.')) return;
   dbgStatus('wiping all viewer data…');
@@ -2232,6 +2759,7 @@ window.debugShinyLegendary = debugShinyLegendary;
 window.debugReset = debugReset;
 window.debugSetCount = debugSetCount;
 window.debugCompletion = debugCompletion;
+window.debugWildSpawn = debugWildSpawn;
 window.debugWipeAll = debugWipeAll;
 
 // Hotkey for testing in a real browser (not OBS): press G to fire a test gift

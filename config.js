@@ -66,6 +66,22 @@ window.STREAM_CONFIG = {
   // your call.
   cardBackImageUrl: 'https://raw.githubusercontent.com/amateurgamer18/pokemon-pack-overlay/main/backcard.png',
 
+  // ---- Wild Pokémon spawn system ----
+  // 3 random auto-spawns per stream. Timing is fully random within ranges
+  // so viewers can't predict drops. One within the first hour, the other two
+  // spread across the rest of the stream. Broadcaster can force extra spawns
+  // beyond the cap with !spawn.
+  wildSpawn: {
+    enabled: true,
+    firstSpawnMinMs:  5 * 60 * 1000,   // earliest first spawn — 5 min after overlay loads
+    firstSpawnMaxMs: 60 * 60 * 1000,   // latest first spawn   — within the first hour
+    intervalMinMs:   60 * 60 * 1000,   // minimum gap between subsequent auto-spawns — 1 hr
+    intervalMaxMs:  180 * 60 * 1000,   // maximum gap between subsequent auto-spawns — 3 hr
+    timeoutMs:        5 * 60 * 1000,   // viewers get 5 min to catch before Pokémon flees
+    maxPerSession: 3,                  // auto-spawn cap per stream (manual !spawn bypasses)
+    catchPercent: 90,                  // also lives in streamerbot-pokecatch.cs (kept here for reference)
+  },
+
   // ---- Sound effects ----
   // soundsEnabled        — master on/off (or add ?mute=1 to the URL to silence)
   // soundVolume          — 0.0 (silent) to 1.0 (full). Tune so SFX sit
