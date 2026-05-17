@@ -92,14 +92,13 @@
   }
 
   /* The roaming Pokémon sprite itself.
-     Confined to the LEFT side of the screen so it doesn't cover gameplay,
-     webcam (top-right), or sub-goal banner (bottom-center).
-     Ground walkers ambling at ~200px from the bottom (above any bottom banner).
-     Flying types swooping in arcs across the upper-left third. */
+     Ground walkers stay centered above the sub-goal banner area (roughly the
+     same horizontal width as the banner itself, ~25vw to ~65vw).
+     Flying types get FULL freedom of the screen — they can soar anywhere. */
   #wild-spawn-sprite {
     position: fixed;
-    bottom: 200px;
-    left: -120px;
+    bottom: 175px;
+    left: 25vw;
     width: 110px;
     height: 110px;
     z-index: 20;
@@ -113,33 +112,34 @@
     object-fit: contain;
     image-rendering: pixelated; /* keep the GIF crisp at large size */
   }
-  /* Ground-walker path — left-third only, well clear of the bottom banner */
+  /* Ground-walker path — centered along the bottom, same width as sub-goal banner */
   #wild-spawn-sprite.walking {
-    animation: walkPath 14s ease-in-out infinite;
+    animation: walkPath 13s ease-in-out infinite;
   }
   @keyframes walkPath {
-    0%   { left: -120px; transform: scaleX(1); }
-    12%  { left: 24px; transform: scaleX(1); }
-    45%  { left: 32vw; transform: scaleX(1); }
-    50%  { left: 32vw; transform: scaleX(-1); }
-    88%  { left: 24px; transform: scaleX(-1); }
-    100% { left: -120px; transform: scaleX(-1); }
+    0%   { left: 25vw; transform: scaleX(1); }
+    45%  { left: 65vw; transform: scaleX(1); }
+    50%  { left: 65vw; transform: scaleX(-1); }
+    95%  { left: 25vw; transform: scaleX(-1); }
+    100% { left: 25vw; transform: scaleX(1); }
   }
-  /* TRUE flying — dramatic figure-eight-ish swoop with vertical climbs/dives
-     and body rotation in the direction of motion. Stays in the left half. */
+  /* TRUE flying — Pokémon soars across the FULL screen with dramatic
+     figure-eight swoops, climbs, dives, and body rotation. */
   #wild-spawn-sprite.flying {
     bottom: 30%;
-    animation: flySwoop 14s ease-in-out infinite;
+    animation: flySwoop 18s ease-in-out infinite;
   }
   @keyframes flySwoop {
-    0%   { left: -10vw; bottom: 30%; transform: scaleX(1) rotate(-6deg); }
-    15%  { left: 8vw;   bottom: 60%; transform: scaleX(1) rotate(-18deg); }
-    32%  { left: 22vw;  bottom: 38%; transform: scaleX(1) rotate(22deg); }
-    48%  { left: 40vw;  bottom: 65%; transform: scaleX(1) rotate(-12deg); }
-    52%  { left: 40vw;  bottom: 65%; transform: scaleX(-1) rotate(12deg); }
-    68%  { left: 22vw;  bottom: 48%; transform: scaleX(-1) rotate(-22deg); }
-    85%  { left: 8vw;   bottom: 30%; transform: scaleX(-1) rotate(18deg); }
-    100% { left: -10vw; bottom: 40%; transform: scaleX(-1) rotate(-6deg); }
+    0%   { left: -10vw; bottom: 25%; transform: scaleX(1) rotate(-6deg); }
+    14%  { left: 18vw;  bottom: 60%; transform: scaleX(1) rotate(-20deg); }
+    28%  { left: 42vw;  bottom: 30%; transform: scaleX(1) rotate(25deg); }
+    42%  { left: 72vw;  bottom: 65%; transform: scaleX(1) rotate(-15deg); }
+    52%  { left: 95vw;  bottom: 40%; transform: scaleX(1) rotate(0); }
+    56%  { left: 95vw;  bottom: 40%; transform: scaleX(-1) rotate(0); }
+    66%  { left: 70vw;  bottom: 70%; transform: scaleX(-1) rotate(18deg); }
+    78%  { left: 45vw;  bottom: 35%; transform: scaleX(-1) rotate(-22deg); }
+    90%  { left: 18vw;  bottom: 55%; transform: scaleX(-1) rotate(15deg); }
+    100% { left: -10vw; bottom: 25%; transform: scaleX(-1) rotate(-6deg); }
   }
   /* Catch — sprite freezes, shrinks into the pokéball, gold sparkle */
   #wild-spawn-sprite.caught {
@@ -161,11 +161,12 @@
     100% { transform: translateX(-50vw) scale(.4); opacity: 0; }
   }
 
-  /* Pulsing chat hint — TOP-LEFT corner, away from the sub-goal banner and webcam */
+  /* Pulsing chat hint — bottom-center, just above the sub-goal banner */
   #wild-spawn-hint {
     position: fixed;
-    top: 24px;
-    left: 24px;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 22;
     background: rgba(0,0,0,.82);
     color: #fff;
@@ -182,20 +183,20 @@
   }
   #wild-spawn-hint strong { color: #ffcb05; }
   @keyframes hintPulse {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.06); }
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50%      { transform: translateX(-50%) scale(1.06); }
   }
 
-  /* Floating status — appears in the left third near sprite roam area,
-     above ground walkers (~200px) and below flying types (~30% bottom) */
+  /* Floating status — appears centered, above where the ground walker patrols */
   #wild-spawn-status {
     position: fixed;
-    bottom: 350px;
-    left: 24px;
+    bottom: 320px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 23;
     color: #fff;
     font-family: 'Impact', 'Arial Black', sans-serif;
-    font-size: 24px;
+    font-size: 26px;
     letter-spacing: 1.5px;
     text-shadow: 3px 3px 0 #000, 0 0 16px rgba(0,0,0,.8);
     white-space: nowrap;
@@ -208,10 +209,10 @@
     animation: statusFlash 1.8s ease-out forwards;
   }
   @keyframes statusFlash {
-    0%   { transform: translateY(20px) scale(.6); opacity: 0; }
-    25%  { transform: translateY(0)    scale(1.15); opacity: 1; }
-    75%  { transform: translateY(-6px) scale(1); opacity: 1; }
-    100% { transform: translateY(-22px) scale(.95); opacity: 0; }
+    0%   { transform: translateX(-50%) translateY(20px) scale(.6); opacity: 0; }
+    25%  { transform: translateX(-50%) translateY(0)    scale(1.15); opacity: 1; }
+    75%  { transform: translateX(-50%) translateY(-6px) scale(1); opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-22px) scale(.95); opacity: 0; }
   }
 
   /* Pokéball thrown to capture — arcs from off-screen right toward sprite */
