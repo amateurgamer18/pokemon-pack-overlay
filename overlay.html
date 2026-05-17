@@ -141,15 +141,24 @@
     90%  { left: 18vw;  bottom: 55%; transform: scaleX(-1) rotate(15deg); }
     100% { left: -10vw; bottom: 25%; transform: scaleX(-1) rotate(-6deg); }
   }
-  /* Catch — sprite freezes, shrinks into the pokéball, gold sparkle */
-  #wild-spawn-sprite.caught {
-    animation: catchShrink .55s cubic-bezier(.6,-0.3,.7,.1) forwards !important;
-    filter: drop-shadow(0 0 16px #ffcb05);
+  /* Catch — sprite flashes white on impact, then spirals into the pokéball.
+     Choreographed in lockstep with the pokéball's catchSequence below. */
+  #wild-spawn-sprite.absorbing {
+    animation: absorbInto 2.8s linear forwards !important;
   }
-  @keyframes catchShrink {
-    0%   { transform: scale(1) rotate(0); opacity: 1; }
-    60%  { transform: scale(.5) rotate(180deg); opacity: .9; }
-    100% { transform: scale(.05) rotate(360deg); opacity: 0; }
+  @keyframes absorbInto {
+    /* Idle while ball is flying in (0-22%, ~620ms) */
+    0%, 22%  { transform: scale(1) rotate(0); opacity: 1;
+               filter: drop-shadow(0 6px 12px rgba(0,0,0,.6)); }
+    /* Impact flash (22-28%) — sprite goes white-hot */
+    25%      { transform: scale(1.18) rotate(0); opacity: 1; filter: brightness(5) saturate(2); }
+    28%      { transform: scale(1) rotate(60deg); opacity: 1; filter: brightness(2.5); }
+    /* Suck-in spiral (28-42%) */
+    35%      { transform: scale(.5) rotate(220deg); opacity: .9;
+               filter: brightness(2) drop-shadow(0 0 24px #ee1515); }
+    42%      { transform: scale(.05) rotate(440deg); opacity: 0; filter: brightness(1.5); }
+    /* Stay gone for the wiggle + confirm phase */
+    100%     { transform: scale(0); opacity: 0; }
   }
   /* Flee — sprite slumps and runs/flies off in the direction it was facing */
   #wild-spawn-sprite.fled {
@@ -214,8 +223,22 @@
     75%  { transform: translateX(-50%) translateY(-6px) scale(1); opacity: 1; }
     100% { transform: translateX(-50%) translateY(-22px) scale(.95); opacity: 0; }
   }
+  /* Longer hold variant for the catch celebration — viewers need time to read */
+  #wild-spawn-status.show-long {
+    opacity: 1;
+    animation: statusFlashLong 5s ease-out forwards;
+  }
+  @keyframes statusFlashLong {
+    0%   { transform: translateX(-50%) translateY(20px) scale(.6); opacity: 0; }
+    8%   { transform: translateX(-50%) translateY(0)    scale(1.18); opacity: 1; }
+    14%  { transform: translateX(-50%) translateY(0)    scale(1); opacity: 1; }
+    90%  { transform: translateX(-50%) translateY(0)    scale(1); opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-22px) scale(.95); opacity: 0; }
+  }
 
-  /* Pokéball thrown to capture — arcs from off-screen right toward sprite */
+  /* Pokéball — full OG-style catch sequence: throw → impact → drop → wiggle ×3 → confirm.
+     Element is positioned via inline style (left/top) at the sprite's center
+     when the catch starts, then this 2.8-second keyframe animation plays. */
   #pokeball-throw {
     position: fixed;
     width: 56px;
@@ -240,14 +263,36 @@
     border-radius: 50%;
     box-shadow: inset 0 0 0 2px #ccc;
   }
-  #pokeball-throw.throw {
+  #pokeball-throw.catchsequence {
     display: block;
-    animation: ballArc .8s cubic-bezier(.3,1.6,.7,1) forwards;
+    animation: catchSequence 2.8s ease-out forwards;
   }
-  @keyframes ballArc {
-    0%   { right: -80px; bottom: 50%; transform: rotate(0) scale(.5); opacity: 0; }
-    15%  { opacity: 1; }
-    100% { right: 50%; bottom: 100px; transform: rotate(900deg) scale(1.4); opacity: 1; }
+  @keyframes catchSequence {
+    /* PHASE 1 — Ball flies in from the right, spinning hard (0-22%, ~620ms) */
+    0%    { transform: translate(70vw, -25vh) rotate(0) scale(.4); opacity: 0; }
+    6%    { opacity: 1; }
+    16%   { transform: translate(35vw, -10vh) rotate(360deg) scale(.9); opacity: 1; }
+    22%   { transform: translate(0, 0)       rotate(720deg) scale(1.35); opacity: 1;
+            filter: brightness(2) drop-shadow(0 0 12px #fff); }
+    /* PHASE 2 — Hold + absorb (22-45%) */
+    28%   { transform: translate(0, 0) rotate(720deg) scale(1); filter: brightness(1); }
+    45%   { transform: translate(0, 0) rotate(720deg) scale(1); }
+    /* PHASE 3 — Ball drops to "ground" with a small bounce (45-58%) */
+    52%   { transform: translate(0, 56px) rotate(740deg) scale(1); }
+    55%   { transform: translate(0, 46px) rotate(745deg) scale(1.05); } /* tiny bounce */
+    58%   { transform: translate(0, 56px) rotate(740deg) scale(1); }
+    /* PHASE 4 — WIGGLE ×3 (58-88%) — left, right, left, right, left, settle */
+    62%   { transform: translate(-14px, 56px) rotate(715deg) scale(1); }
+    67%   { transform: translate(14px,  56px) rotate(765deg) scale(1); }
+    72%   { transform: translate(-12px, 56px) rotate(720deg) scale(1); }
+    77%   { transform: translate(12px,  56px) rotate(760deg) scale(1); }
+    82%   { transform: translate(-8px,  56px) rotate(730deg) scale(1); }
+    87%   { transform: translate(0,     56px) rotate(740deg) scale(1); }
+    /* PHASE 5 — Catch confirmed! Pulse + gold halo (87-100%) */
+    92%   { transform: translate(0, 56px) rotate(740deg) scale(1.3);
+            filter: drop-shadow(0 0 32px #ffcb05) brightness(1.4); }
+    100%  { transform: translate(0, 56px) rotate(740deg) scale(1);
+            filter: drop-shadow(0 0 18px #ffcb05); }
   }
 
   /* ---------- Pack & Card container ---------- */
@@ -2536,15 +2581,17 @@ function renderWildSpawn(card, spawn) {
   document.body.appendChild(status);
 }
 
-// Flash a "X missed!" / "X caught it!" line above the sprite, auto-fades.
-function showSpawnStatus(text) {
+// Flash a status line above the sprite. Pass long=true for the catch
+// celebration text which stays visible for ~5 seconds; default is the
+// shorter 1.8s pop used for misses, fleeing etc.
+function showSpawnStatus(text, long) {
   const status = document.getElementById('wild-spawn-status');
   if (!status) return;
   status.textContent = text;
-  // Restart the flash animation by toggling the class
-  status.classList.remove('show');
+  // Reset both classes then re-add the right one (forces animation to re-run)
+  status.classList.remove('show', 'show-long');
   void status.offsetWidth; // force reflow so the animation re-runs
-  status.classList.add('show');
+  status.classList.add(long ? 'show-long' : 'show');
 }
 
 function startResolutionPoll(spawn) {
@@ -2606,25 +2653,57 @@ async function handleSpawnWin(spawn, winnerName) {
   const hint = document.getElementById('wild-spawn-hint');
   if (hint) hint.remove();
 
-  // Pause the roaming animation — sprite freezes wherever it is when caught
-  if (sprite) sprite.style.animation = 'none';
+  if (sprite) {
+    // 1. Freeze sprite at its CURRENT viewport position (capture before
+    //    killing the keyframe animation, otherwise it snaps to base CSS).
+    const rect = sprite.getBoundingClientRect();
+    sprite.style.animation = 'none';
+    sprite.style.left = rect.left + 'px';
+    sprite.style.top = rect.top + 'px';
+    sprite.style.bottom = 'auto';
+    sprite.style.right = 'auto';
 
-  // Throw the pokéball
-  const pb = document.createElement('div');
-  pb.id = 'pokeball-throw';
-  document.body.appendChild(pb);
-  requestAnimationFrame(() => pb.classList.add('throw'));
-  await wait(700);
+    // 2. Position the pokéball centered on the sprite (ball is 56px wide).
+    const pb = document.createElement('div');
+    pb.id = 'pokeball-throw';
+    pb.style.left = (rect.left + rect.width / 2 - 28) + 'px';
+    pb.style.top  = (rect.top  + rect.height / 2 - 28) + 'px';
+    document.body.appendChild(pb);
 
-  // Sprite shrinks into the ball
-  if (sprite) sprite.classList.add('caught');
-  await wait(550);
-  if (pb.parentElement) pb.remove();
+    // 3. Trigger the full catch sequence (both animations choreographed to 2.8s).
+    requestAnimationFrame(() => {
+      pb.classList.add('catchsequence');
+      sprite.classList.add('absorbing');
+    });
 
-  // Big celebration line
-  showSpawnStatus(`🎉 ${winnerName} CAUGHT IT!`);
-  await wait(2200);
+    // 4. Play the catch sound effect (if enabled and the file is configured).
+    playCatchSfx();
+
+    // 5. Wait for the full ball animation to complete.
+    await wait(2900);
+
+    // 6. Celebration line — flash up the winner's name. show-long variant
+    //    stays visible ~5s so viewers have time to read it before fade-out.
+    showSpawnStatus(`🎉 ${winnerName} CAUGHT IT!`, true);
+    await wait(5000);
+
+    if (pb.parentElement) pb.remove();
+  }
   await clearWildSpawn();
+}
+
+// Plays the OG-style catch sound. Reads cfg.wildSpawn.catchSoundUrl —
+// if blank, silently no-ops. Reuses cfg.soundsEnabled / cfg.soundVolume
+// so it follows the same on/off + volume rules as your pack sounds.
+function playCatchSfx() {
+  if (!cfg.soundsEnabled) return;
+  const url = (cfg.wildSpawn && cfg.wildSpawn.catchSoundUrl) || '';
+  if (!url) return;
+  try {
+    const audio = new Audio(url);
+    audio.volume = typeof cfg.soundVolume === 'number' ? cfg.soundVolume : 0.5;
+    audio.play().catch(e => console.warn('[wildspawn] sound play failed:', e));
+  } catch (e) { console.warn('[wildspawn] sound init failed:', e); }
 }
 
 async function handleSpawnFlee(spawn) {
