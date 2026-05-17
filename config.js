@@ -80,6 +80,10 @@ window.STREAM_CONFIG = {
     timeoutMs:        5 * 60 * 1000,   // viewers get 5 min to catch before Pokémon flees
     maxPerSession: 3,                  // auto-spawn cap per stream (manual !spawn bypasses)
     catchPercent: 90,                  // also lives in streamerbot-pokecatch.cs (kept here for reference)
+    // OG-style catch sound. Plays the moment the pokéball animation starts.
+    // Leave blank to disable. Add an MP3 to your GitHub repo and put the raw URL here.
+    // Sound plays at cfg.soundVolume and only if cfg.soundsEnabled is true.
+    catchSoundUrl: 'https://raw.githubusercontent.com/amateurgamer18/pokemon-pack-overlay/main/pokemon-catch.mp3',
   },
 
   // ---- Sound effects ----
