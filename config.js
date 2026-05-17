@@ -75,8 +75,8 @@ window.STREAM_CONFIG = {
     enabled: true,
     firstSpawnMinMs:  5 * 60 * 1000,   // earliest first spawn — 5 min after overlay loads
     firstSpawnMaxMs: 60 * 60 * 1000,   // latest first spawn   — within the first hour
-    intervalMinMs:   60 * 60 * 1000,   // minimum gap between subsequent auto-spawns — 1 hr
-    intervalMaxMs:  180 * 60 * 1000,   // maximum gap between subsequent auto-spawns — 3 hr
+    intervalMinMs:  180 * 60 * 1000,   // minimum gap between subsequent auto-spawns — 3 hr
+    intervalMaxMs:  300 * 60 * 1000,   // maximum gap between subsequent auto-spawns — 5 hr
     timeoutMs:        5 * 60 * 1000,   // viewers get 5 min to catch before Pokémon flees
     maxPerSession: 2,                  // auto-spawn cap per stream — one in first hour, one later (manual !spawn bypasses)
     catchPercent: 90,                  // also lives in streamerbot-pokecatch.cs (kept here for reference)
