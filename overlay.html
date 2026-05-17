@@ -55,24 +55,24 @@
      bottom-third of the overlay. Flying-type Pokémon float higher and
      have a gentler vertical sway. */
 
-  /* Big drop-in banner that flashes for the first ~3 seconds of a spawn */
+  /* Drop-in announcement banner — anchored upper-left so it doesn't sit
+     on top of gameplay or the webcam. Big but off to the side. */
   #wild-spawn-intro {
     position: fixed;
-    top: 28%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(.6);
+    top: 80px;
+    left: 24px;
     z-index: 25;
-    padding: 18px 36px;
+    padding: 14px 28px;
     background: linear-gradient(135deg, rgba(34,170,80,.95), rgba(22,120,55,.98));
     color: #ffcb05;
     font-family: 'Impact', 'Arial Black', sans-serif;
-    font-size: 44px;
-    letter-spacing: 3px;
+    font-size: 32px;
+    letter-spacing: 2px;
     text-shadow: 3px 3px 0 #000, 0 0 30px rgba(255,203,5,.6);
     border: 4px solid #ffcb05;
-    border-radius: 18px;
+    border-radius: 14px;
     box-shadow: 0 16px 40px rgba(0,0,0,.6), 0 0 60px rgba(34,170,80,.5);
-    text-align: center;
+    text-align: left;
     opacity: 0;
     pointer-events: none;
     white-space: nowrap;
@@ -82,22 +82,26 @@
   }
   #wild-spawn-intro.fade { animation: introFade .9s ease-in forwards; }
   @keyframes introDrop {
-    0%   { transform: translate(-50%, -50%) scale(.4) rotate(-12deg); opacity: 0; }
-    60%  { transform: translate(-50%, -50%) scale(1.12) rotate(2deg); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(1) rotate(0); opacity: 1; }
+    0%   { transform: translateX(-120%) scale(.6) rotate(-6deg); opacity: 0; }
+    60%  { transform: translateX(0) scale(1.06) rotate(1deg); opacity: 1; }
+    100% { transform: translateX(0) scale(1) rotate(0); opacity: 1; }
   }
   @keyframes introFade {
-    0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -120%) scale(.8); }
+    0%   { opacity: 1; transform: translateX(0) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) scale(.8); }
   }
 
-  /* The roaming Pokémon sprite itself */
+  /* The roaming Pokémon sprite itself.
+     Confined to the LEFT side of the screen so it doesn't cover gameplay,
+     webcam (top-right), or sub-goal banner (bottom-center).
+     Ground walkers ambling at ~200px from the bottom (above any bottom banner).
+     Flying types swooping in arcs across the upper-left third. */
   #wild-spawn-sprite {
     position: fixed;
-    bottom: 60px;
+    bottom: 200px;
     left: -120px;
-    width: 130px;
-    height: 130px;
+    width: 110px;
+    height: 110px;
     z-index: 20;
     pointer-events: none;
     transition: opacity .4s;
@@ -109,35 +113,33 @@
     object-fit: contain;
     image-rendering: pixelated; /* keep the GIF crisp at large size */
   }
-  /* Ground-walker path: drifts left-to-right, pauses, turns, walks back */
+  /* Ground-walker path — left-third only, well clear of the bottom banner */
   #wild-spawn-sprite.walking {
-    animation: walkPath 18s ease-in-out infinite;
+    animation: walkPath 14s ease-in-out infinite;
   }
   @keyframes walkPath {
     0%   { left: -120px; transform: scaleX(1); }
-    8%   { left: 5vw; transform: scaleX(1); }
-    42%  { left: calc(100vw - 250px); transform: scaleX(1); }
-    50%  { left: calc(100vw - 250px); transform: scaleX(-1); }
-    58%  { left: calc(100vw - 350px); transform: scaleX(-1); }
-    92%  { left: 5vw; transform: scaleX(-1); }
+    12%  { left: 24px; transform: scaleX(1); }
+    45%  { left: 32vw; transform: scaleX(1); }
+    50%  { left: 32vw; transform: scaleX(-1); }
+    88%  { left: 24px; transform: scaleX(-1); }
     100% { left: -120px; transform: scaleX(-1); }
   }
-  /* Flying path: starts higher, sways vertically while drifting */
+  /* TRUE flying — dramatic figure-eight-ish swoop with vertical climbs/dives
+     and body rotation in the direction of motion. Stays in the left half. */
   #wild-spawn-sprite.flying {
-    bottom: 40%;
-    animation: flyPath 16s ease-in-out infinite, flyBob 3.5s ease-in-out infinite;
+    bottom: 30%;
+    animation: flySwoop 14s ease-in-out infinite;
   }
-  @keyframes flyPath {
-    0%   { left: -120px; transform: scaleX(1); }
-    8%   { left: 5vw; transform: scaleX(1); }
-    42%  { left: calc(100vw - 250px); transform: scaleX(1); }
-    50%  { left: calc(100vw - 250px); transform: scaleX(-1); }
-    92%  { left: 5vw; transform: scaleX(-1); }
-    100% { left: -120px; transform: scaleX(-1); }
-  }
-  @keyframes flyBob {
-    0%, 100% { margin-top: 0; }
-    50%      { margin-top: -40px; }
+  @keyframes flySwoop {
+    0%   { left: -10vw; bottom: 30%; transform: scaleX(1) rotate(-6deg); }
+    15%  { left: 8vw;   bottom: 60%; transform: scaleX(1) rotate(-18deg); }
+    32%  { left: 22vw;  bottom: 38%; transform: scaleX(1) rotate(22deg); }
+    48%  { left: 40vw;  bottom: 65%; transform: scaleX(1) rotate(-12deg); }
+    52%  { left: 40vw;  bottom: 65%; transform: scaleX(-1) rotate(12deg); }
+    68%  { left: 22vw;  bottom: 48%; transform: scaleX(-1) rotate(-22deg); }
+    85%  { left: 8vw;   bottom: 30%; transform: scaleX(-1) rotate(18deg); }
+    100% { left: -10vw; bottom: 40%; transform: scaleX(-1) rotate(-6deg); }
   }
   /* Catch — sprite freezes, shrinks into the pokéball, gold sparkle */
   #wild-spawn-sprite.caught {
@@ -159,19 +161,18 @@
     100% { transform: translateX(-50vw) scale(.4); opacity: 0; }
   }
 
-  /* Pulsing chat hint anchored at the bottom-center */
+  /* Pulsing chat hint — TOP-LEFT corner, away from the sub-goal banner and webcam */
   #wild-spawn-hint {
     position: fixed;
-    bottom: 12px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 24px;
+    left: 24px;
     z-index: 22;
     background: rgba(0,0,0,.82);
     color: #fff;
     font-family: 'Impact', 'Arial Black', sans-serif;
-    font-size: 22px;
-    letter-spacing: 2px;
-    padding: 10px 28px;
+    font-size: 18px;
+    letter-spacing: 1.5px;
+    padding: 8px 22px;
     border: 3px solid #ffcb05;
     border-radius: 100px;
     text-shadow: 2px 2px 0 rgba(0,0,0,.6);
@@ -181,35 +182,36 @@
   }
   #wild-spawn-hint strong { color: #ffcb05; }
   @keyframes hintPulse {
-    0%, 100% { transform: translateX(-50%) scale(1); }
-    50%      { transform: translateX(-50%) scale(1.07); }
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.06); }
   }
 
-  /* Floating status messages — "X missed!" / "X caught it!" / "Pokémon fled!" */
+  /* Floating status — appears in the left third near sprite roam area,
+     above ground walkers (~200px) and below flying types (~30% bottom) */
   #wild-spawn-status {
     position: fixed;
-    bottom: 220px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 350px;
+    left: 24px;
     z-index: 23;
     color: #fff;
     font-family: 'Impact', 'Arial Black', sans-serif;
-    font-size: 30px;
-    letter-spacing: 2px;
+    font-size: 24px;
+    letter-spacing: 1.5px;
     text-shadow: 3px 3px 0 #000, 0 0 16px rgba(0,0,0,.8);
     white-space: nowrap;
     opacity: 0;
     transition: opacity .3s ease, transform .3s ease;
+    pointer-events: none;
   }
   #wild-spawn-status.show {
     opacity: 1;
-    animation: statusFlash 1.6s ease-out forwards;
+    animation: statusFlash 1.8s ease-out forwards;
   }
   @keyframes statusFlash {
-    0%   { transform: translateX(-50%) translateY(20px) scale(.6); opacity: 0; }
-    25%  { transform: translateX(-50%) translateY(0) scale(1.15); opacity: 1; }
-    75%  { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
-    100% { transform: translateX(-50%) translateY(-30px) scale(.95); opacity: 0; }
+    0%   { transform: translateY(20px) scale(.6); opacity: 0; }
+    25%  { transform: translateY(0)    scale(1.15); opacity: 1; }
+    75%  { transform: translateY(-6px) scale(1); opacity: 1; }
+    100% { transform: translateY(-22px) scale(.95); opacity: 0; }
   }
 
   /* Pokéball thrown to capture — arcs from off-screen right toward sprite */
@@ -2670,6 +2672,31 @@ function scheduleNextWildSpawn() {
 
 async function pollSpawnRequest() {
   if (!cfg.firebaseUrl) return;
+
+  // ---- (1) Observe /active_spawn — if another overlay instance created a
+  // spawn we don't have locally yet (e.g. the debug button in a test browser,
+  // while OBS is the second instance), render it here too.
+  if (!wildSpawnState) {
+    try {
+      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/active_spawn.json`);
+      if (r.ok) {
+        const current = await r.json();
+        if (current && current.spawnId &&
+            !current.winner &&
+            Date.now() < (current.expiresAt || 0)) {
+          const card = KANTO_CARDS.find(c => c.id === current.pokemonId);
+          if (card) {
+            wildSpawnState = current;
+            renderWildSpawn(card, current);
+            startResolutionPoll(current);
+            dbgStatus(`Observed wild spawn: ${card.name}`);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // ---- (2) Manual !spawn request flag
   try {
     const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/spawn_request.json`);
     if (!r.ok) return;
