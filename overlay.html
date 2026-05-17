@@ -2724,6 +2724,20 @@ function startWildSpawnSystem() {
     Math.random() * (ws.firstSpawnMaxMs - ws.firstSpawnMinMs);
   setTimeout(() => triggerWildSpawn(false), firstDelay);
   console.log(`[wildspawn] system started — first spawn in ${Math.round(firstDelay / 60000)} min`);
+
+  // Best-effort cleanup on page close/refresh. If THIS overlay created the
+  // currently-active spawn (i.e. it's in our wildSpawnState), wipe the
+  // /active_spawn entry from Firebase so a stale entry doesn't haunt us on
+  // the next refresh. Uses sendBeacon for reliability during unload.
+  window.addEventListener('beforeunload', () => {
+    if (wildSpawnState && cfg.firebaseUrl) {
+      try {
+        const url = `${cfg.firebaseUrl.replace(/\/$/,'')}/active_spawn.json`;
+        // navigator.sendBeacon doesn't support DELETE; do a synchronous fetch instead
+        fetch(url, { method: 'DELETE', keepalive: true });
+      } catch (e) {}
+    }
+  });
 }
 
 startWildSpawnSystem();
