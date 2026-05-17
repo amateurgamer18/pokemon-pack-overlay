@@ -2102,8 +2102,8 @@ async function openModal(card) {
     // pre-dating the source field)
     const source = entry?.source || 'packed';
     const sourceLabel = source === 'caught'
-      ? '<span class="val" style="color:#22aa50;">🌿 Caught in the wild</span>'
-      : '<span class="val" style="color:#ffcb05;">📦 Pulled from a pack</span>';
+      ? '<span class="val" style="color:#22aa50;">🌿 From the wild</span>'
+      : '<span class="val" style="color:#ffcb05;">📦 From a pack</span>';
     statsEl.innerHTML = `
       <div class="stat-cell"><div class="lbl">HP</div><div class="val">${card.hp}</div></div>
       <div class="stat-cell"><div class="lbl">Type</div><div class="val">${card.type}</div></div>
