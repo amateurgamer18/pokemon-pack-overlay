@@ -78,7 +78,7 @@ window.STREAM_CONFIG = {
     intervalMinMs:   60 * 60 * 1000,   // minimum gap between subsequent auto-spawns — 1 hr
     intervalMaxMs:  180 * 60 * 1000,   // maximum gap between subsequent auto-spawns — 3 hr
     timeoutMs:        5 * 60 * 1000,   // viewers get 5 min to catch before Pokémon flees
-    maxPerSession: 3,                  // auto-spawn cap per stream (manual !spawn bypasses)
+    maxPerSession: 2,                  // auto-spawn cap per stream — one in first hour, one later (manual !spawn bypasses)
     catchPercent: 90,                  // also lives in streamerbot-pokecatch.cs (kept here for reference)
     // OG-style catch sound. Plays the moment the pokéball animation starts.
     // Relative path — file must live next to overlay.html in your GitHub repo

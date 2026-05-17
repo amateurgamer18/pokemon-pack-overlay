@@ -241,27 +241,80 @@
      when the catch starts, then this 2.8-second keyframe animation plays. */
   #pokeball-throw {
     position: fixed;
-    width: 56px;
-    height: 56px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
     z-index: 21;
+    /* Layered for 3D sphere look:
+       1. Top-left specular highlight (lit from above-left)
+       2. Black horizontal divide line through middle
+       3. Red top hemisphere — radial darkening at edges for sphere depth
+       4. White bottom hemisphere — same treatment */
     background:
-      linear-gradient(180deg, #ee1515 0%, #ee1515 47%, #000 47%, #000 53%, #fff 53%, #fff 100%);
-    border: 4px solid #000;
-    box-shadow: 0 8px 18px rgba(0,0,0,.55);
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.85) 0%, rgba(255,255,255,.15) 18%, transparent 38%),
+      linear-gradient(180deg, transparent calc(50% - 4px), #000 calc(50% - 4px), #000 calc(50% + 4px), transparent calc(50% + 4px)),
+      radial-gradient(ellipse at 50% 100%, #ff5050 0%, #d31616 55%, #7a0a0a 100%) top/100% 50% no-repeat,
+      radial-gradient(ellipse at 50% 0%,   #ffffff 0%, #dadada 55%, #707070 100%) bottom/100% 50% no-repeat;
+    border: 2.5px solid #000;
+    /* Inner shading + outer drop shadow for 3D sphere illusion */
+    box-shadow:
+      inset -7px -7px 14px rgba(0,0,0,.45),
+      inset 5px 5px 12px rgba(255,255,255,.3),
+      0 12px 26px rgba(0,0,0,.7);
     pointer-events: none;
     display: none;
   }
   #pokeball-throw::after {
+    /* Center button — 3D pressed-in look with its own highlight */
     content: '';
     position: absolute;
     top: 50%; left: 50%;
-    width: 16px; height: 16px;
-    margin: -8px 0 0 -8px;
-    background: #fff;
-    border: 3px solid #000;
+    width: 20px; height: 20px;
+    margin: -10px 0 0 -10px;
     border-radius: 50%;
-    box-shadow: inset 0 0 0 2px #ccc;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.95) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, #fff 0%, #dcdcdc 65%, #909090 100%);
+    border: 2px solid #000;
+    box-shadow:
+      inset -1.5px -1.5px 3px rgba(0,0,0,.4),
+      inset 1.5px 1.5px 2px rgba(255,255,255,.6);
+    z-index: 2;
+  }
+
+  /* OPENING FLASH — the white capture beam erupting from the ball at impact.
+     Positioned at the same coords as the ball (Pokémon location) when the
+     catch starts. Stays hidden until the ball lands, then explodes outward
+     in a bright white burst that engulfs the Pokémon. */
+  #pokeball-flash {
+    position: fixed;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: white;
+    z-index: 22;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    animation: openFlash 2.8s ease-out forwards;
+  }
+  @keyframes openFlash {
+    /* Hidden while the ball is flying in (0-20%) */
+    0%, 20% { transform: translate(-50%, -50%) scale(0); opacity: 0; box-shadow: none; }
+    /* IMPACT! Ball opens, blast of white light (22-26%) */
+    22%     { transform: translate(-50%, -50%) scale(25); opacity: 1;
+              box-shadow: 0 0 80px 40px rgba(255,255,255,.95),
+                          0 0 160px 60px rgba(255,255,255,.6); }
+    26%     { transform: translate(-50%, -50%) scale(35); opacity: .9;
+              box-shadow: 0 0 60px 30px rgba(255,255,255,.7),
+                          0 0 120px 50px rgba(255,255,255,.4); }
+    /* Beam shrinks back as Pokémon gets absorbed (26-44%) */
+    34%     { transform: translate(-50%, -50%) scale(20); opacity: .6;
+              box-shadow: 0 0 30px 15px rgba(255,255,255,.4); }
+    44%     { transform: translate(-50%, -50%) scale(4); opacity: 0;
+              box-shadow: 0 0 0 0 transparent; }
+    /* Stay invisible for wiggle + confirm phases */
+    100%    { opacity: 0; }
   }
   #pokeball-throw.catchsequence {
     display: block;
@@ -2456,7 +2509,7 @@ function wsConfig() {
     intervalMinMs:   60 * 60 * 1000,
     intervalMaxMs:  180 * 60 * 1000,
     timeoutMs:        5 * 60 * 1000,
-    maxPerSession: 3,
+    maxPerSession: 2,
   }, cfg.wildSpawn || {});
 }
 
@@ -2663,17 +2716,26 @@ async function handleSpawnWin(spawn, winnerName) {
     sprite.style.bottom = 'auto';
     sprite.style.right = 'auto';
 
-    // 2. Position the pokéball centered on the sprite (ball is 56px wide).
+    // 2. Position the pokéball centered on the sprite (ball is 62px wide now).
     const pb = document.createElement('div');
     pb.id = 'pokeball-throw';
-    pb.style.left = (rect.left + rect.width / 2 - 28) + 'px';
-    pb.style.top  = (rect.top  + rect.height / 2 - 28) + 'px';
+    pb.style.left = (rect.left + rect.width / 2 - 31) + 'px';
+    pb.style.top  = (rect.top  + rect.height / 2 - 31) + 'px';
     document.body.appendChild(pb);
 
-    // 3. Trigger the full catch sequence (both animations choreographed to 2.8s).
+    // 2b. White "opening" flash — radiates from the Pokémon's centre when the
+    //     ball lands, simulating the pokéball opening + capture beam.
+    const flash = document.createElement('div');
+    flash.id = 'pokeball-flash';
+    flash.style.left = (rect.left + rect.width / 2) + 'px';
+    flash.style.top  = (rect.top  + rect.height / 2) + 'px';
+    document.body.appendChild(flash);
+
+    // 3. Trigger the full catch sequence (all animations choreographed to 2.8s).
     requestAnimationFrame(() => {
       pb.classList.add('catchsequence');
       sprite.classList.add('absorbing');
+      // flash animation starts immediately because its CSS sets animation on the base selector
     });
 
     // 4. Play the catch sound effect (if enabled and the file is configured).
@@ -2688,6 +2750,8 @@ async function handleSpawnWin(spawn, winnerName) {
     await wait(5000);
 
     if (pb.parentElement) pb.remove();
+    const f = document.getElementById('pokeball-flash');
+    if (f && f.parentElement) f.remove();
   }
   await clearWildSpawn();
 }
