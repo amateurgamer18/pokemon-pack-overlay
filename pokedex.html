@@ -2035,9 +2035,22 @@ function lookupUser(user) {
    MODAL — Pokemon detail view with evolution chain
    ============================================================ */
 async function openModal(card) {
-  const isOwned = ownedIds(collection).has(card.id);
-  const entry = ownedEntryFor(card.id);
-  const isShinyOwned = entry && entry.shiny;
+  // Pick the entry that matches the CURRENT dex view (standard vs shiny).
+  // Without this, the modal would always use whichever variant happened to
+  // come first in iteration — meaning a viewer who owns BOTH variants would
+  // never see the shiny styling when clicking the shiny tile.
+  const isShinyView = currentDex === 'shiny';
+  const standardEntry = collection[String(card.id)];
+  const shinyEntry    = collection[`${card.id}_shiny`];
+  // Prefer the view-matching variant, fall back to the other so the modal
+  // still has meta info to render even when only one variant is owned.
+  const entry = (isShinyView ? shinyEntry : standardEntry)
+              || shinyEntry || standardEntry;
+  // Description / evolution / "owned" lock state — true if ANY variant is owned
+  const isOwned = !!shinyEntry || !!standardEntry;
+  // Shiny styling on the name + shiny art — true only when we're in shiny
+  // view AND they actually own the shiny variant
+  const isShinyOwned = isShinyView && !!shinyEntry;
   const backdrop = document.getElementById('modal-backdrop');
   const modal = document.getElementById('modal');
   const typeColor = TYPE_COLORS[card.type]?.bg || '#888';
@@ -2085,11 +2098,18 @@ async function openModal(card) {
       : isShinyOwned
         ? '<span class="val" style="color:#ff66ff;">Shiny</span>'
         : '<span class="val">Standard</span>';
+    // Source: 'caught' (wild spawn) or 'packed' (pack pull, default for entries
+    // pre-dating the source field)
+    const source = entry?.source || 'packed';
+    const sourceLabel = source === 'caught'
+      ? '<span class="val" style="color:#22aa50;">🌿 Caught in the wild</span>'
+      : '<span class="val" style="color:#ffcb05;">📦 Pulled from a pack</span>';
     statsEl.innerHTML = `
       <div class="stat-cell"><div class="lbl">HP</div><div class="val">${card.hp}</div></div>
       <div class="stat-cell"><div class="lbl">Type</div><div class="val">${card.type}</div></div>
       <div class="stat-cell"><div class="lbl">Rarity</div>${rarityLabel}</div>
-      <div class="stat-cell"><div class="lbl">First Caught</div><div class="val">${caughtDate}</div></div>
+      <div class="stat-cell"><div class="lbl">Source</div>${sourceLabel}</div>
+      <div class="stat-cell"><div class="lbl">First Acquired</div><div class="val">${caughtDate}</div></div>
     `;
   } else {
     statsEl.innerHTML = `
