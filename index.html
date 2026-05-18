@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>amateurgamer.live — Pokémon Pack Stream</title>
+<style>
+  :root {
+    --gold: #ffcb05;
+    --gold-dim: #c79500;
+    --navy: #2a3b8f;
+    --navy-dark: #1a2966;
+    --navy-darker: #0f1a3d;
+    --red: #ee1515;
+    --red-dim: #a50f0f;
+    --bg: #0a0e1f;
+    --bg-card: #131938;
+    --bg-card-hi: #1c2347;
+    --line: rgba(255,255,255,.08);
+    --text: #e8ebf5;
+    --text-dim: #8b92a8;
+    --live-green: #22aa50;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(238,21,21,.08) 0%, transparent 35%),
+      radial-gradient(circle at 85% 90%, rgba(42,59,143,.3) 0%, transparent 45%),
+      radial-gradient(circle at 50% 50%, rgba(255,203,5,.04) 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Trebuchet MS', system-ui, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--gold); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* HEADER */
+  header.top {
+    background: linear-gradient(180deg, rgba(238,21,21,.95) 0%, rgba(165,15,15,.95) 100%);
+    border-bottom: 3px solid var(--gold);
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    padding: 20px 24px;
+    text-align: center;
+  }
+  header.top h1 {
+    margin: 0;
+    color: var(--gold);
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 44px;
+    letter-spacing: 4px;
+    line-height: 1;
+    text-shadow:
+      -2px -2px 0 var(--navy), 2px -2px 0 var(--navy),
+      -2px 2px 0 var(--navy), 2px 2px 0 var(--navy),
+      0 6px 0 var(--navy-dark);
+  }
+  header.top .sub {
+    margin-top: 8px;
+    color: rgba(255,255,255,.9);
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 24px 60px;
+  }
+
+  /* STREAM EMBED */
+  .stream-section {
+    position: relative;
+    margin-bottom: 32px;
+  }
+  .stream-wrap {
+    position: relative;
+    background: #000;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid var(--line);
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    aspect-ratio: 16 / 9;
+  }
+  .stream-wrap iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
+  .live-pill {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 3;
+    background: rgba(0,0,0,.7);
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1.5px solid rgba(255,255,255,.15);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .live-pill .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--text-dim);
+  }
+  .live-pill.live { color: #fff; border-color: rgba(34,170,80,.6); }
+  .live-pill.live .dot {
+    background: var(--live-green);
+    box-shadow: 0 0 12px var(--live-green);
+    animation: livePulse 1.4s ease-in-out infinite;
+  }
+  .live-pill.offline { color: var(--text-dim); }
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: .5; transform: scale(1.15); }
+  }
+  .unmute-hint {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    z-index: 3;
+    background: rgba(0,0,0,.8);
+    color: var(--gold);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    pointer-events: none;
+    animation: unmutePulse 2.5s ease-in-out infinite;
+  }
+  @keyframes unmutePulse {
+    0%, 100% { opacity: .9; }
+    50%      { opacity: .55; }
+  }
+
+  /* DEX LOOKUP */
+  .dex-lookup {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hi));
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 32px;
+    text-align: center;
+  }
+  .dex-lookup h2 {
+    margin: 0 0 14px;
+    color: var(--gold);
+    font-family: 'Impact', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+  }
+  .dex-lookup p {
+    margin: 0 0 18px;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+  .dex-lookup form {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .dex-lookup input {
+    background: rgba(0,0,0,.5);
+    border: 1.5px solid rgba(255,203,5,.4);
+    color: #fff;
+    padding: 12px 18px;
+    font-size: 15px;
+    border-radius: 10px;
+    font-family: inherit;
+    min-width: 240px;
+    outline: none;
+  }
+  .dex-lookup input:focus { border-color: var(--gold); }
+  .dex-lookup button {
+    background: var(--gold);
+    color: var(--navy-dark);
+    border: none;
+    padding: 12px 26px;
+    font-size: 15px;
+    font-weight: 800;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: .5px;
+    transition: transform .12s;
+  }
+  .dex-lookup button:hover { background: #ffd633; transform: translateY(-1px); }
+
+  /* GRID — leaderboard / recent pulls / wild status */
+  .feed-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin-bottom: 32px;
+  }
+  .feed-card {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hi));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    min-height: 240px;
+  }
+  .feed-card h3 {
+    margin: 0 0 14px;
+    color: var(--gold);
+    font-family: 'Impact', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Leaderboard */
+  .leaderboard-list { list-style: none; padding: 0; margin: 0; }
+  .leaderboard-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .leaderboard-list li:last-child { border-bottom: 0; }
+  .leaderboard-list .rank {
+    font-family: 'Impact', sans-serif;
+    font-size: 22px;
+    color: var(--text-dim);
+    min-width: 32px;
+    text-align: center;
+  }
+  .leaderboard-list .rank-1 { color: var(--gold); }
+  .leaderboard-list .rank-2 { color: #c0c0c0; }
+  .leaderboard-list .rank-3 { color: #cd7f32; }
+  .leaderboard-list .lb-name { flex: 1; font-weight: 700; }
+  .leaderboard-list .lb-stat { color: var(--text-dim); font-size: 12px; font-weight: 700; }
+  .leaderboard-list .lb-stat strong { color: var(--text); }
+  .leaderboard-list a { color: var(--text); }
+
+  /* Recent pulls */
+  .recent-pulls-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .recent-pulls-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px;
+    border-radius: 8px;
+    background: rgba(0,0,0,.25);
+  }
+  .recent-pulls-list img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+  }
+  .recent-pulls-list .rp-info { flex: 1; }
+  .recent-pulls-list .rp-name { font-weight: 700; font-size: 13px; line-height: 1.2; }
+  .recent-pulls-list .rp-name.shiny { color: #ff66ff; }
+  .recent-pulls-list .rp-name.legendary { color: var(--gold); }
+  .recent-pulls-list .rp-user { color: var(--text-dim); font-size: 11px; }
+  .recent-pulls-list .rp-time { color: var(--text-dim); font-size: 10px; }
+
+  /* Wild spawn status */
+  .wild-status .empty {
+    color: var(--text-dim);
+    font-style: italic;
+    text-align: center;
+    padding: 20px 0;
+  }
+  .wild-status .active {
+    text-align: center;
+  }
+  .wild-status .active img {
+    width: 110px;
+    height: 110px;
+    margin: 0 auto 8px;
+    display: block;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,.5));
+    animation: wildBob 2s ease-in-out infinite;
+  }
+  @keyframes wildBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .wild-status .active .name {
+    font-family: 'Impact', sans-serif;
+    font-size: 22px;
+    color: var(--gold);
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+  .wild-status .active .cmd {
+    background: rgba(0,0,0,.45);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #fff;
+    display: inline-block;
+  }
+  .wild-status .active .cmd strong { color: var(--gold); }
+
+  /* HOW IT WORKS */
+  .how {
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hi));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 32px;
+  }
+  .how h2 {
+    margin: 0 0 16px;
+    color: var(--gold);
+    font-family: 'Impact', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+  }
+  .how ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .how li {
+    background: rgba(0,0,0,.25);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    border-left: 3px solid var(--gold);
+  }
+  .how li strong { color: var(--gold); }
+
+  /* HALL OF FAME */
+  .hof {
+    background: linear-gradient(135deg, rgba(255,203,5,.08), rgba(255,203,5,.02));
+    border: 1px solid rgba(255,203,5,.2);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 24px;
+  }
+  .hof h3 {
+    margin: 0 0 14px;
+    color: var(--gold);
+    font-family: 'Impact', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1.5px;
+  }
+  .hof-list { list-style: none; padding: 0; margin: 0; }
+  .hof-list li {
+    padding: 6px 0;
+    color: var(--text);
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+  }
+  .hof-list .empty {
+    color: var(--text-dim);
+    font-style: italic;
+    text-align: center;
+    padding: 14px 0;
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 30px 20px 10px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  footer a { margin: 0 10px; }
+
+  @media (max-width: 640px) {
+    header.top h1 { font-size: 32px; letter-spacing: 2px; }
+    main { padding: 20px 12px 40px; }
+    .feed-card { min-height: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>AMATEURGAMER</h1>
+  <div class="sub">Pokémon Pack Stream · Collect · Catch · Level Up</div>
+</header>
+
+<main>
+
+  <!-- LIVE STREAM EMBED -->
+  <section class="stream-section">
+    <div class="stream-wrap">
+      <div class="live-pill offline" id="live-pill">
+        <span class="dot"></span>
+        <span id="live-text">Checking…</span>
+      </div>
+      <div class="unmute-hint">🔊 Click the player to unmute</div>
+      <iframe
+        id="stream-iframe"
+        src="https://player.kick.com/amateurgamer?muted=true&autoplay=true"
+        allow="autoplay; fullscreen"
+        allowfullscreen></iframe>
+    </div>
+  </section>
+
+  <!-- DEX LOOKUP -->
+  <section class="dex-lookup">
+    <h2>📖 Check Your Pokédex</h2>
+    <p>Enter your Kick username to see your collection, level, and stats.</p>
+    <form onsubmit="goToDex(event)">
+      <input id="viewer-input" placeholder="your Kick username" autocomplete="off">
+      <button type="submit">View Pokédex →</button>
+    </form>
+  </section>
+
+  <!-- LIVE FEED GRID -->
+  <section class="feed-grid">
+    <div class="feed-card">
+      <h3>🏆 Top Collectors</h3>
+      <ol class="leaderboard-list" id="leaderboard-list">
+        <li class="empty"><span class="lb-name" style="color:var(--text-dim);font-weight:400;">Loading…</span></li>
+      </ol>
+    </div>
+    <div class="feed-card">
+      <h3>⏱ Latest Pulls</h3>
+      <ul class="recent-pulls-list" id="recent-pulls-list">
+        <li style="color:var(--text-dim);justify-content:center;">Loading…</li>
+      </ul>
+    </div>
+    <div class="feed-card">
+      <h3>🌿 Wild Right Now</h3>
+      <div class="wild-status" id="wild-status">
+        <div class="empty">Checking…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how">
+    <h2>How It Works</h2>
+    <ul>
+      <li><strong>Sub or gift</strong> on Kick — 1 credit each. 2 credits = a pack opens live with the full animation.</li>
+      <li><strong>Drop kicks</strong> — 500 kicks = 1 credit. Smaller drops bank toward the next credit. Nothing wasted.</li>
+      <li><strong>Wild Pokémon</strong> appear twice per stream. Type <strong>!pokecatch</strong> to throw a pokéball. 90% catch rate (30% for legendaries).</li>
+      <li><strong>Build your dex</strong> — 151 Kanto Pokémon + shinies for each. Level up your trainer along the way.</li>
+    </ul>
+  </section>
+
+  <!-- HALL OF FAME -->
+  <section class="hof">
+    <h3>👑 Pokédex Champions</h3>
+    <ul class="hof-list" id="completers-list">
+      <li class="empty">Hall of fame loading…</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <a href="https://kick.com/amateurgamer" target="_blank">Watch on Kick</a> ·
+  <a href="pokedex.html" target="_blank">Browse Pokédex</a> ·
+  built with 🎴 for the community
+</footer>
+
+<script src="cards.js"></script>
+<script src="config.js"></script>
+<script>
+const cfg = window.STREAM_CONFIG || {};
+const FB = (cfg.firebaseUrl || '').replace(/\/$/, '');
+const LEGEND_IDS = new Set([144, 145, 146, 150, 151]);
+
+// ---- Helpers
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function timeAgo(ts) {
+  const sec = (Date.now() - ts) / 1000;
+  if (sec < 60) return 'just now';
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+  return `${Math.floor(sec / 86400)}d ago`;
+}
+function cardSpriteUrl(id, shiny) {
+  // PokeAPI static sprites
+  const folder = shiny ? 'shiny' : '';
+  return shiny
+    ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`
+    : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+}
+
+// ---- Dex lookup form
+function goToDex(e) {
+  e.preventDefault();
+  const v = document.getElementById('viewer-input').value.trim();
+  if (!v) return;
+  window.location.href = `pokedex.html?viewer=${encodeURIComponent(v)}`;
+}
+
+// ---- XP calc (same formula as pokedex.html)
+function calculateXP(col) {
+  let xp = 0;
+  for (const k of Object.keys(col)) {
+    const v = col[k];
+    if (!v || typeof v.id !== 'number') continue;
+    const isLeg = LEGEND_IDS.has(v.id);
+    if (v.shiny && isLeg) xp += 250;
+    else if (isLeg) xp += 100;
+    else if (v.shiny) xp += 50;
+    else xp += 10;
+  }
+  return xp;
+}
+
+// ---- Kick stream live-status check
+async function refreshLiveStatus() {
+  const pill = document.getElementById('live-pill');
+  const text = document.getElementById('live-text');
+  try {
+    const r = await fetch('https://kick.com/api/v2/channels/amateurgamer', { cache: 'no-store' });
+    if (!r.ok) throw new Error('api err');
+    const data = await r.json();
+    const isLive = !!(data && data.livestream);
+    if (isLive) {
+      pill.classList.remove('offline');
+      pill.classList.add('live');
+      text.textContent = 'LIVE';
+    } else {
+      pill.classList.remove('live');
+      pill.classList.add('offline');
+      text.textContent = 'OFFLINE';
+    }
+  } catch (e) {
+    // CORS or rate-limit — fall back to friendlier wording
+    pill.classList.remove('live');
+    pill.classList.add('offline');
+    text.textContent = 'Status unknown';
+  }
+}
+
+// ---- Leaderboard from all collections
+async function refreshLeaderboard() {
+  if (!FB) return;
+  try {
+    const r = await fetch(`${FB}/collections.json`);
+    if (!r.ok) throw new Error();
+    const all = await r.json() || {};
+    const rows = [];
+    for (const [key, col] of Object.entries(all)) {
+      if (!col) continue;
+      const ownedSet = new Set();
+      let shinies = 0, legs = 0;
+      for (const k of Object.keys(col)) {
+        const v = col[k];
+        if (!v || typeof v.id !== 'number') continue;
+        ownedSet.add(v.id);
+        if (v.shiny) shinies++;
+        if (LEGEND_IDS.has(v.id)) legs++;
+      }
+      if (ownedSet.size === 0) continue;
+      const xp = calculateXP(col);
+      const display = (col._meta && col._meta.displayName) ? col._meta.displayName : key;
+      rows.push({ key, display, owned: ownedSet.size, shinies, legs, xp });
+    }
+    rows.sort((a, b) => b.xp - a.xp);
+    const top = rows.slice(0, 5);
+    const el = document.getElementById('leaderboard-list');
+    if (top.length === 0) {
+      el.innerHTML = '<li class="empty"><span class="lb-name" style="color:var(--text-dim);font-weight:400;">No collectors yet. Be the first!</span></li>';
+      return;
+    }
+    el.innerHTML = top.map((r, i) => `
+      <li>
+        <span class="rank rank-${i + 1}">${i + 1}</span>
+        <span class="lb-name"><a href="pokedex.html?viewer=${encodeURIComponent(r.key)}">${escapeHtml(r.display)}</a></span>
+        <span class="lb-stat"><strong>${r.owned}</strong>/151 · <strong>${r.xp.toLocaleString()}</strong> XP</span>
+      </li>
+    `).join('');
+  } catch (e) {
+    document.getElementById('leaderboard-list').innerHTML =
+      '<li class="empty"><span class="lb-name" style="color:var(--text-dim);font-weight:400;">Leaderboard unavailable</span></li>';
+  }
+}
+
+// ---- Latest pulls (newest 'at' across all collections)
+async function refreshLatestPulls() {
+  if (!FB) return;
+  try {
+    const r = await fetch(`${FB}/collections.json`);
+    if (!r.ok) throw new Error();
+    const all = await r.json() || {};
+    const pulls = [];
+    for (const [key, col] of Object.entries(all)) {
+      if (!col) continue;
+      const display = (col._meta && col._meta.displayName) ? col._meta.displayName : key;
+      for (const slotKey of Object.keys(col)) {
+        const v = col[slotKey];
+        if (!v || typeof v.id !== 'number' || !v.at) continue;
+        pulls.push({ ...v, owner: display, ownerKey: key });
+      }
+    }
+    pulls.sort((a, b) => b.at - a.at);
+    const recent = pulls.slice(0, 6);
+    const el = document.getElementById('recent-pulls-list');
+    if (recent.length === 0) {
+      el.innerHTML = '<li style="color:var(--text-dim);justify-content:center;">No pulls yet</li>';
+      return;
+    }
+    el.innerHTML = recent.map(p => {
+      const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === p.id) : null;
+      const isLeg = LEGEND_IDS.has(p.id);
+      const nameCls = isLeg ? 'legendary' : (p.shiny ? 'shiny' : '');
+      const sprite = cardSpriteUrl(p.id, p.shiny);
+      return `
+        <li>
+          <img src="${sprite}" alt="${escapeHtml(p.name || '')}">
+          <div class="rp-info">
+            <div class="rp-name ${nameCls}">${escapeHtml(p.name || (card ? card.name : '???'))}${p.shiny ? ' ✦' : ''}${isLeg ? ' ⚜' : ''}</div>
+            <div class="rp-user"><a href="pokedex.html?viewer=${encodeURIComponent(p.ownerKey)}">${escapeHtml(p.owner)}</a></div>
+          </div>
+          <div class="rp-time">${timeAgo(p.at)}</div>
+        </li>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('recent-pulls-list').innerHTML =
+      '<li style="color:var(--text-dim);justify-content:center;">Pulls unavailable</li>';
+  }
+}
+
+// ---- Active wild spawn
+async function refreshWildSpawn() {
+  if (!FB) return;
+  const el = document.getElementById('wild-status');
+  try {
+    const r = await fetch(`${FB}/active_spawn.json`, { cache: 'no-store' });
+    if (!r.ok) throw new Error();
+    const spawn = await r.json();
+    if (!spawn || !spawn.spawnId || spawn.winner ||
+        (spawn.expiresAt && Date.now() > spawn.expiresAt)) {
+      el.innerHTML = '<div class="empty">No wild Pokémon right now — check back during stream!</div>';
+      return;
+    }
+    const sprite = cardSpriteUrl(spawn.pokemonId, false);
+    const isLeg = LEGEND_IDS.has(spawn.pokemonId);
+    el.innerHTML = `
+      <div class="active">
+        <img src="${sprite}" alt="${escapeHtml(spawn.pokemonName)}">
+        <div class="name">${isLeg ? '⚜ ' : ''}${escapeHtml(spawn.pokemonName)}</div>
+        <div class="cmd">In stream chat: <strong>!pokecatch</strong></div>
+      </div>
+    `;
+  } catch (e) {
+    el.innerHTML = '<div class="empty">No wild Pokémon right now</div>';
+  }
+}
+
+// ---- Hall of fame
+async function refreshHallOfFame() {
+  if (!FB) return;
+  const el = document.getElementById('completers-list');
+  try {
+    const r = await fetch(`${FB}/completers.json`);
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    if (!data) {
+      el.innerHTML = '<li class="empty">No champions yet — be the first to fill the Kanto Pokédex!</li>';
+      return;
+    }
+    const list = Object.values(data).sort((a, b) => a.at - b.at);
+    if (list.length === 0) {
+      el.innerHTML = '<li class="empty">No champions yet — be the first to fill the Kanto Pokédex!</li>';
+      return;
+    }
+    el.innerHTML = list.map((c, i) => `
+      <li>
+        <span><strong>${i + 1}.</strong> ${escapeHtml(c.user)}</span>
+        <span style="color:var(--text-dim);">${new Date(c.at).toLocaleDateString()}</span>
+      </li>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = '<li class="empty">Hall of fame unavailable</li>';
+  }
+}
+
+// ---- Boot + refresh loop
+function refreshAll() {
+  refreshLiveStatus();
+  refreshLeaderboard();
+  refreshLatestPulls();
+  refreshWildSpawn();
+  refreshHallOfFame();
+}
+refreshAll();
+setInterval(refreshAll, 15000); // refresh every 15s
+</script>
+
+</body>
+</html>
