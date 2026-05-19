@@ -1681,7 +1681,12 @@ let authState = { logged_in: false, user: null };
 
 async function fetchAuthState() {
   try {
-    const resp = await fetch('/auth/me', { credentials: 'include' });
+    // cache: no-store + cache-buster param to bypass any stale 404 cached
+    // from before the Worker was deployed. /auth/me should never be cached.
+    const resp = await fetch('/auth/me?t=' + Date.now(), {
+      credentials: 'include',
+      cache: 'no-store',
+    });
     if (resp.ok) authState = await resp.json();
   } catch (e) {
     // /auth/me unreachable — silently treat as logged out
