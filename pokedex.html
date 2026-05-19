@@ -2327,7 +2327,14 @@ async function fetchCollection(user) {
     try {
       const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/collections/${encodeURIComponent(k)}.json`);
       if (r.ok) return (await r.json()) || {};
-    } catch (e) { console.warn('firebase read failed:', e); }
+      // Non-OK response — return null so the caller can preserve previous state
+      // rather than blanking the dex (Firebase blip / rate limit / etc).
+      console.warn('firebase read non-OK:', r.status);
+      return null;
+    } catch (e) {
+      console.warn('firebase read failed:', e);
+      return null;
+    }
   }
   return JSON.parse(localStorage.getItem(`dex:${k}`) || '{}');
 }
@@ -2993,8 +3000,11 @@ async function load() {
     fetchCollection(currentUser),
     fetchTeam(currentUser),
   ]);
-  collection = coll;
-  currentTeam = team;
+  // Only overwrite collection if the fetch actually succeeded. On a transient
+  // Firebase blip, fetchCollection returns null — in that case keep showing
+  // the last good data instead of blanking the dex for every viewer.
+  if (coll !== null) collection = coll;
+  if (team !== null) currentTeam = team;
   // Surface the original casing if the overlay stamped one onto the collection
   const stored = collection?._meta?.displayName;
   if (stored) {
