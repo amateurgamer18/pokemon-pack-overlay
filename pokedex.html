@@ -1735,7 +1735,6 @@ async function fetchTeam(uKey) {
 }
 
 async function saveTeam(team) {
-  if (!cfg.firebaseUrl) return false;
   if (!authState.logged_in) return false;
   const owner = userKey(authState.user);
   // Only allow saving to your OWN team
@@ -1744,13 +1743,26 @@ async function saveTeam(team) {
     .filter(x => x && Number.isFinite(x.id))
     .map(x => ({ id: x.id | 0, shiny: !!x.shiny }));
   try {
-    const r = await fetch(`${cfg.firebaseUrl}/teams/${encodeURIComponent(owner)}.json`, {
-      method: 'PUT',
+    // POST through the Worker — Firebase rules block direct client writes
+    // to /teams/, so this is the only valid write path. The Worker validates
+    // the session cookie before writing, so a viewer can only modify their
+    // own team regardless of what they send.
+    const r = await fetch('/auth/team', {
+      method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(clean),
     });
-    return r.ok;
-  } catch { return false; }
+    if (!r.ok) {
+      const detail = await r.text().catch(() => '');
+      console.warn('[saveTeam] Worker rejected save:', r.status, detail);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[saveTeam] network error:', e);
+    return false;
+  }
 }
 
 function canEditTeam() {
