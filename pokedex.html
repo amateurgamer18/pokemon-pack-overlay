@@ -1466,6 +1466,69 @@
     cursor: pointer;
     padding: 0 6px;
   }
+  /* Picker controls bar — search, sort, filter chips */
+  .tp-controls {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    background: rgba(0,0,0,.2);
+  }
+  .tp-search {
+    flex: 1 1 200px;
+    min-width: 140px;
+    background: rgba(0,0,0,.35);
+    border: 1.5px solid rgba(255,255,255,.15);
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .tp-search:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+  .tp-chip-group {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .tp-chip {
+    background: rgba(255,255,255,.06);
+    color: rgba(255,255,255,.7);
+    border: 1.5px solid rgba(255,255,255,.12);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    transition: all .12s;
+  }
+  .tp-chip:hover { color: #fff; border-color: rgba(255,255,255,.25); }
+  .tp-chip.active {
+    background: var(--gold);
+    color: var(--navy-dark);
+    border-color: var(--gold);
+  }
+  .tp-chip.active.shiny-chip {
+    background: #ff80f7;
+    color: var(--navy-dark);
+    border-color: #ff80f7;
+  }
+  .tp-chip.active.legend-chip {
+    background: #ffe066;
+    color: var(--navy-dark);
+    border-color: #ffe066;
+  }
+  @media (max-width: 560px) {
+    .tp-search { flex: 1 1 100%; }
+  }
   .tp-grid {
     padding: 14px;
     overflow-y: auto;
@@ -1630,6 +1693,20 @@
       <div class="tp-header">
         <h3 id="tp-title">Pick a Pokémon for slot</h3>
         <button class="tp-close" onclick="closeTeamPicker()">×</button>
+      </div>
+      <div class="tp-controls">
+        <input class="tp-search" id="tp-search" type="text" placeholder="Search by name…" autocomplete="off">
+        <div class="tp-chip-group" id="tp-sort-chips">
+          <button class="tp-chip active" data-sort="id">#</button>
+          <button class="tp-chip" data-sort="level">Lv</button>
+          <button class="tp-chip" data-sort="recent">New</button>
+        </div>
+        <div class="tp-chip-group" id="tp-filter-chips">
+          <button class="tp-chip active" data-filter="all">All</button>
+          <button class="tp-chip" data-filter="standard">Standard</button>
+          <button class="tp-chip shiny-chip" data-filter="shiny">Shiny ✦</button>
+          <button class="tp-chip legend-chip" data-filter="legendary">Legendary ⚜</button>
+        </div>
       </div>
       <div class="tp-grid" id="tp-grid"></div>
     </div>
@@ -1885,46 +1962,143 @@ function renderTeam() {
   grid.innerHTML = cells.join('');
 }
 
+// Picker control state — reset each time the picker opens
+let pickerSearch = '';
+let pickerSort   = 'id';   // 'id' | 'level' | 'recent'
+let pickerFilter = 'all';  // 'all' | 'standard' | 'shiny' | 'legendary'
+
 function openTeamPicker(slotIndex) {
   if (!canEditTeam()) return;
   pickingSlotIndex = slotIndex;
-  const grid = document.getElementById('tp-grid');
   document.getElementById('tp-title').textContent = `Pick a Pokémon for slot ${slotIndex + 1}`;
 
-  // List owned entries, fade those already on the team
+  // Reset controls each time so they don't carry weird state between opens
+  pickerSearch = '';
+  pickerSort = 'id';
+  pickerFilter = 'all';
+  const searchInput = document.getElementById('tp-search');
+  if (searchInput) searchInput.value = '';
+  setActiveChip('tp-sort-chips', 'sort', 'id');
+  setActiveChip('tp-filter-chips', 'filter', 'all');
+
+  renderPickerGrid();
+  document.getElementById('tp-backdrop').classList.add('show');
+
+  // Focus search after a tick so the modal animation has settled
+  setTimeout(() => { if (searchInput) searchInput.focus(); }, 50);
+}
+
+function setActiveChip(containerId, attr, value) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.querySelectorAll('.tp-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset[attr] === value);
+  });
+}
+
+function renderPickerGrid() {
+  const grid = document.getElementById('tp-grid');
+  if (!grid) return;
+
+  // Gather owned entries with metadata for sort/filter
   const teamKeys = new Set(currentTeam.map(e => e.shiny ? `${e.id}_shiny` : String(e.id)));
-  const owned = [];
+  let owned = [];
   for (const [key, v] of Object.entries(collection)) {
     if (key === '_meta') continue;
     if (!v || !Number.isFinite(v.id)) continue;
     const k = v.shiny ? `${v.id}_shiny` : String(v.id);
-    owned.push({ id: v.id, shiny: !!v.shiny, level: v.level || 5, inTeam: teamKeys.has(k) });
+    owned.push({
+      id: v.id,
+      shiny: !!v.shiny,
+      level: v.level || 5,
+      at: v.at || 0,
+      inTeam: teamKeys.has(k),
+    });
   }
-  owned.sort((a, b) => a.id - b.id || (a.shiny ? 1 : 0) - (b.shiny ? 1 : 0));
+
+  // Filter — variant + legendary
+  if (pickerFilter === 'standard')      owned = owned.filter(o => !o.shiny);
+  else if (pickerFilter === 'shiny')    owned = owned.filter(o =>  o.shiny);
+  else if (pickerFilter === 'legendary') owned = owned.filter(o => LEGEND_IDS.has(o.id));
+
+  // Search — match by Pokémon name (case-insensitive substring)
+  const q = pickerSearch.trim().toLowerCase();
+  if (q) {
+    owned = owned.filter(o => {
+      const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === o.id) : null;
+      return card && card.name.toLowerCase().includes(q);
+    });
+  }
+
+  // Sort
+  if (pickerSort === 'level') {
+    owned.sort((a, b) => b.level - a.level || a.id - b.id);
+  } else if (pickerSort === 'recent') {
+    owned.sort((a, b) => b.at - a.at);
+  } else {
+    // 'id' — Pokédex number ascending, standard before shiny
+    owned.sort((a, b) => a.id - b.id || (a.shiny ? 1 : 0) - (b.shiny ? 1 : 0));
+  }
 
   if (owned.length === 0) {
-    grid.innerHTML = '<div class="tp-empty">No Pokémon yet — pull packs or catch wild spawns first.</div>';
-  } else {
-    grid.innerHTML = owned.map(o => {
-      const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === o.id) : null;
-      const sprites = cardSprites(o.id);
-      const art = o.shiny ? sprites.shiny : sprites.standard;
-      const isLeg = LEGEND_IDS.has(o.id);
-      const classes = ['tp-tile'];
-      if (o.shiny) classes.push('shiny');
-      if (isLeg) classes.push('legendary');
-      if (o.inTeam) classes.push('in-team');
-      return `
-        <div class="${classes.join(' ')}" ${o.inTeam ? '' : `onclick="selectFromPicker(${o.id}, ${o.shiny})"`}>
-          <img src="${art}" alt="${escapeHtml(card ? card.name : '???')}">
-          <div class="tp-name">${escapeHtml(card ? card.name : '???')}${o.shiny ? ' ✦' : ''}</div>
-          <div class="tp-lv">Lv ${o.level}</div>
-        </div>
-      `;
-    }).join('');
+    const msg = q || pickerFilter !== 'all'
+      ? 'No Pokémon match those filters.'
+      : 'No Pokémon yet — pull packs or catch wild spawns first.';
+    grid.innerHTML = `<div class="tp-empty">${msg}</div>`;
+    return;
   }
-  document.getElementById('tp-backdrop').classList.add('show');
+
+  grid.innerHTML = owned.map(o => {
+    const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === o.id) : null;
+    const sprites = cardSprites(o.id);
+    const art = o.shiny ? sprites.shiny : sprites.standard;
+    const isLeg = LEGEND_IDS.has(o.id);
+    const classes = ['tp-tile'];
+    if (o.shiny) classes.push('shiny');
+    if (isLeg) classes.push('legendary');
+    if (o.inTeam) classes.push('in-team');
+    return `
+      <div class="${classes.join(' ')}" ${o.inTeam ? '' : `onclick="selectFromPicker(${o.id}, ${o.shiny})"`}>
+        <img src="${art}" alt="${escapeHtml(card ? card.name : '???')}">
+        <div class="tp-name">${escapeHtml(card ? card.name : '???')}${o.shiny ? ' ✦' : ''}</div>
+        <div class="tp-lv">Lv ${o.level}</div>
+      </div>
+    `;
+  }).join('');
 }
+
+// Wire picker control events — DOM elements exist by the time this script runs
+// (they appear earlier in <body>), so run immediately rather than waiting for
+// DOMContentLoaded (which may already have fired).
+(function wirePickerControls() {
+  const searchInput = document.getElementById('tp-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      pickerSearch = searchInput.value;
+      renderPickerGrid();
+    });
+  }
+  const sortChips = document.getElementById('tp-sort-chips');
+  if (sortChips) {
+    sortChips.addEventListener('click', e => {
+      const btn = e.target.closest('.tp-chip');
+      if (!btn) return;
+      pickerSort = btn.dataset.sort;
+      setActiveChip('tp-sort-chips', 'sort', pickerSort);
+      renderPickerGrid();
+    });
+  }
+  const filterChips = document.getElementById('tp-filter-chips');
+  if (filterChips) {
+    filterChips.addEventListener('click', e => {
+      const btn = e.target.closest('.tp-chip');
+      if (!btn) return;
+      pickerFilter = btn.dataset.filter;
+      setActiveChip('tp-filter-chips', 'filter', pickerFilter);
+      renderPickerGrid();
+    });
+  }
+})();
 
 function closeTeamPicker(event) {
   if (event && event.target !== event.currentTarget) return;
