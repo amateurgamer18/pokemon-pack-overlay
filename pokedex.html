@@ -1513,6 +1513,57 @@
     text-align: center;
     color: rgba(255,255,255,.5);
   }
+
+  /* "Add to team" / "Remove from team" button inside the Pokémon detail modal */
+  .modal-team-action {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0 4px;
+  }
+  .modal-team-action:empty { display: none; }
+  .modal-team-action button {
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dim) 100%);
+    color: var(--navy-dark);
+    border: 2px solid var(--gold-dim);
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: .5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: transform .12s, box-shadow .12s;
+    box-shadow: 0 3px 10px rgba(255,203,5,.25);
+  }
+  .modal-team-action button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px rgba(255,203,5,.4);
+  }
+  .modal-team-action button.remove {
+    background: linear-gradient(180deg, #ff5a5a 0%, var(--red) 100%);
+    color: #fff;
+    border-color: var(--red-dim);
+    box-shadow: 0 3px 10px rgba(238,21,21,.3);
+  }
+  .modal-team-action button.remove:hover {
+    box-shadow: 0 5px 14px rgba(238,21,21,.45);
+  }
+  .modal-team-action button.disabled,
+  .modal-team-action button:disabled {
+    background: rgba(255,255,255,.08);
+    color: rgba(255,255,255,.4);
+    border-color: rgba(255,255,255,.12);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  .modal-team-action .ta-hint {
+    font-size: 12px;
+    color: rgba(255,255,255,.55);
+    margin-top: 6px;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -1653,6 +1704,7 @@
         <div class="modal-loading">Loading Pokédex entry…</div>
       </div>
       <div class="modal-stats" id="m-stats"></div>
+      <div class="modal-team-action" id="m-team-action"></div>
       <div class="evo-chain" id="m-evo" style="display:none;">
         <div class="evo-chain-title">Evolution</div>
         <div class="evo-chain-row" id="m-evo-row"></div>
@@ -1896,6 +1948,90 @@ async function removeTeamSlot(slotIndex) {
   newTeam.splice(slotIndex, 1);
   currentTeam = newTeam;
   renderTeam();
+  await saveTeam(currentTeam);
+}
+
+/* Modal "Add to team" / "Remove from team" button.
+   Variant logic: if viewer owns the variant matching the current dex tab
+   (standard / shiny), that's what gets added. Falls back to the other variant
+   if they only own one. */
+function pickVariantForModal(card) {
+  const standardEntry = collection[String(card.id)];
+  const shinyEntry    = collection[`${card.id}_shiny`];
+  const isShinyView   = currentDex === 'shiny';
+  if (isShinyView && shinyEntry)    return { shiny: true,  entry: shinyEntry };
+  if (!isShinyView && standardEntry) return { shiny: false, entry: standardEntry };
+  if (standardEntry)                 return { shiny: false, entry: standardEntry };
+  if (shinyEntry)                    return { shiny: true,  entry: shinyEntry };
+  return null;
+}
+
+function isInTeam(id, shiny) {
+  return currentTeam.some(e => e.id === id && !!e.shiny === !!shiny);
+}
+
+function renderModalTeamAction(card) {
+  const el = document.getElementById('m-team-action');
+  if (!el) return;
+  el.innerHTML = '';
+
+  // Only show for logged-in user viewing their own dex
+  if (!canEditTeam()) return;
+
+  // Only show if they actually own this Pokémon
+  const variant = pickVariantForModal(card);
+  if (!variant) return;
+
+  const inTeam   = isInTeam(card.id, variant.shiny);
+  const teamFull = currentTeam.length >= MAX_TEAM_SIZE;
+  const label    = variant.shiny ? ' ✦' : '';
+
+  if (inTeam) {
+    el.innerHTML = `
+      <div>
+        <button class="remove" onclick="removeFromTeamFromModal(${card.id}, ${variant.shiny})">
+          ✓ On your team · Remove
+        </button>
+        <div class="ta-hint">Click to remove ${escapeHtml(card.name)}${label} from your battle team.</div>
+      </div>
+    `;
+  } else if (teamFull) {
+    el.innerHTML = `
+      <div>
+        <button disabled>⚔ Team is full (6 / 6)</button>
+        <div class="ta-hint">Remove a Pokémon from your team first.</div>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `
+      <div>
+        <button onclick="addToTeamFromModal(${card.id}, ${variant.shiny})">
+          ⚔ Add to Battle Team
+        </button>
+        <div class="ta-hint">${escapeHtml(card.name)}${label} will be available for !battle matches.</div>
+      </div>
+    `;
+  }
+}
+
+async function addToTeamFromModal(id, shiny) {
+  if (!canEditTeam()) return;
+  if (currentTeam.length >= MAX_TEAM_SIZE) return;
+  if (isInTeam(id, shiny)) return;
+  currentTeam = currentTeam.concat([{ id: id | 0, shiny: !!shiny }]);
+  renderTeam();
+  // Re-render the modal button so it flips to "Remove"
+  const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === id) : null;
+  if (card) renderModalTeamAction(card);
+  await saveTeam(currentTeam);
+}
+
+async function removeFromTeamFromModal(id, shiny) {
+  if (!canEditTeam()) return;
+  currentTeam = currentTeam.filter(e => !(e.id === id && !!e.shiny === !!shiny));
+  renderTeam();
+  const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === id) : null;
+  if (card) renderModalTeamAction(card);
   await saveTeam(currentTeam);
 }
 
@@ -2504,7 +2640,7 @@ async function renderLeaderboard() {
         <li class="rank-${i + 1}" onclick="lookupUser('${escapeHtml(r.user).replace(/'/g, '&apos;')}')" style="cursor:pointer;">
           <span class="rank">${i + 1}</span>
           <span class="lb-user">
-            <span class="lb-level">Lv ${r.level}</span>${escapeHtml(r.display)}${r.user === currentUser ? '<span class="you-tag">YOU</span>' : ''}
+            <span class="lb-level">Lv ${r.level}</span>${escapeHtml(r.display)}${authState.logged_in && r.user === userKey(authState.user) ? '<span class="you-tag">YOU</span>' : ''}
           </span>
           <span class="lb-stats">
             <span class="lb-stat"><strong>${r.owned}</strong>/151</span>
@@ -2627,6 +2763,9 @@ async function openModal(card) {
       <div class="stat-cell"><div class="lbl">Pokédex #</div><div class="val">${String(card.id).padStart(3,'0')}</div></div>
     `;
   }
+
+  // Team action button — only renders when logged in, viewing own dex, and owns the Pokémon
+  renderModalTeamAction(card);
 
   backdrop.classList.add('show');
   document.body.style.overflow = 'hidden';
