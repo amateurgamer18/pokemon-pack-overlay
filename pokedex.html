@@ -1255,6 +1255,257 @@
     background: var(--gold);
     color: var(--navy-dark);
   }
+
+  /* =============================================================
+     Auth area in header — "Login with Kick" or "Logged in as X"
+     ============================================================= */
+  .auth-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+    font-size: 12px;
+    color: rgba(255,255,255,.85);
+  }
+  .auth-area .auth-status { font-weight: 600; }
+  .auth-area .auth-status strong { color: var(--gold); }
+  .auth-btn {
+    background: linear-gradient(180deg, #53fc18 0%, #2bb800 100%);
+    color: #000;
+    border: 1.5px solid #1a8a00;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    transition: transform .12s;
+  }
+  .auth-btn:hover { transform: translateY(-1px); }
+  .auth-btn.logout {
+    background: transparent;
+    color: rgba(255,255,255,.6);
+    border-color: rgba(255,255,255,.2);
+    font-weight: 600;
+  }
+  .auth-btn.logout:hover { color: var(--red); border-color: var(--red); }
+
+  /* =============================================================
+     TEAM section — 6 slots above recent pulls
+     ============================================================= */
+  .team-section {
+    background: linear-gradient(180deg, rgba(255,203,5,.08), rgba(42,59,143,.15));
+    border: 2px solid var(--gold-dim);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 22px;
+  }
+  .team-section .team-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .team-section .team-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--gold);
+    margin: 0;
+    letter-spacing: .5px;
+  }
+  .team-section .team-title .icon { margin-right: 6px; }
+  .team-section .team-edit-hint {
+    font-size: 12px;
+    color: rgba(255,255,255,.65);
+  }
+  .team-section .team-edit-hint.editable { color: #6cf; }
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 780px) {
+    .team-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  .team-slot {
+    position: relative;
+    aspect-ratio: 1 / 1.15;
+    background: rgba(0,0,0,.25);
+    border: 2px dashed rgba(255,255,255,.18);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    transition: all .15s;
+    overflow: hidden;
+  }
+  .team-slot.filled {
+    border: 2px solid var(--gold);
+    background: radial-gradient(circle at 50% 35%, rgba(255,203,5,.18), rgba(0,0,0,.4));
+  }
+  .team-slot.filled.shiny {
+    border-color: #ff80f7;
+    background: radial-gradient(circle at 50% 35%, rgba(255,128,247,.22), rgba(0,0,0,.4));
+  }
+  .team-slot.filled.legendary {
+    border-color: #ffe066;
+    background: radial-gradient(circle at 50% 35%, rgba(255,224,102,.25), rgba(0,0,0,.5));
+    box-shadow: 0 0 12px rgba(255,224,102,.4);
+  }
+  .team-slot.editable { cursor: pointer; }
+  .team-slot.editable:hover {
+    transform: translateY(-2px);
+    border-color: var(--gold);
+  }
+  .team-slot .slot-empty {
+    color: rgba(255,255,255,.35);
+    font-size: 11px;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .team-slot .slot-empty .plus { font-size: 28px; display: block; margin-bottom: 2px; }
+  .team-slot img {
+    width: 100%;
+    height: 70%;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+  .team-slot .slot-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .team-slot .slot-level {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(0,0,0,.7);
+    color: var(--gold);
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .team-slot .slot-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(238,21,21,.85);
+    color: white;
+    font-size: 13px;
+    font-weight: 800;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 1px solid rgba(0,0,0,.4);
+  }
+  .team-slot.editable.filled .slot-remove { display: flex; }
+  .team-slot.editable.filled:hover .slot-remove { background: var(--red); }
+
+  /* Team picker modal — list of viewer's collection to pick from */
+  .tp-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.85);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .tp-backdrop.show { display: flex; }
+  .tp-modal {
+    background: var(--navy-darker);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    max-width: 720px;
+    width: 100%;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .tp-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tp-header h3 {
+    margin: 0;
+    color: var(--gold);
+    font-size: 18px;
+  }
+  .tp-close {
+    background: transparent;
+    color: rgba(255,255,255,.7);
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 6px;
+  }
+  .tp-grid {
+    padding: 14px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+  .tp-tile {
+    background: rgba(0,0,0,.35);
+    border: 2px solid rgba(255,255,255,.15);
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .15s;
+  }
+  .tp-tile:hover {
+    border-color: var(--gold);
+    transform: translateY(-2px);
+  }
+  .tp-tile.shiny { border-color: #ff80f7; }
+  .tp-tile.legendary { border-color: #ffe066; }
+  .tp-tile.in-team { opacity: .35; pointer-events: none; }
+  .tp-tile img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+  .tp-tile .tp-name {
+    font-size: 10px;
+    color: #fff;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tp-tile .tp-lv {
+    font-size: 9px;
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .tp-empty {
+    padding: 30px;
+    text-align: center;
+    color: rgba(255,255,255,.5);
+  }
 </style>
 </head>
 <body>
@@ -1273,6 +1524,9 @@
       </div>
       <input id="user-input" placeholder="Look up viewer">
       <button onclick="changeUser()">View</button>
+      <div class="auth-area" id="auth-area">
+        <!-- Populated by JS: either "Login with Kick" button OR "Logged in as X · Logout" -->
+      </div>
     </div>
   </div>
 </header>
@@ -1300,6 +1554,28 @@
       <span class="chip latest" id="latest"></span>
     </div>
   </section>
+
+  <!-- Team section — 6 slots. Read-only unless logged-in user matches current viewer. -->
+  <section class="team-section" id="team-section">
+    <div class="team-header">
+      <h2 class="team-title"><span class="icon">⚔</span> Battle Team</h2>
+      <div class="team-edit-hint" id="team-edit-hint">Pokémon shown here will be used in battles.</div>
+    </div>
+    <div class="team-grid" id="team-grid">
+      <!-- 6 slots rendered by renderTeam() -->
+    </div>
+  </section>
+
+  <!-- Team picker modal — opened when editing a team slot -->
+  <div class="tp-backdrop" id="tp-backdrop" onclick="closeTeamPicker(event)">
+    <div class="tp-modal" onclick="event.stopPropagation()">
+      <div class="tp-header">
+        <h3 id="tp-title">Pick a Pokémon for slot</h3>
+        <button class="tp-close" onclick="closeTeamPicker()">×</button>
+      </div>
+      <div class="tp-grid" id="tp-grid"></div>
+    </div>
+  </div>
 
   <!-- Recent pulls strip -->
   <h2 class="section-title"><span class="icon">⏱</span> Recent Pulls <span class="hint">last 10</span></h2>
@@ -1397,6 +1673,214 @@ let currentDisplay = rawCurrentUser;         // shown to viewers — updated fro
 let currentFilter = 'all';
 let currentDex = 'standard'; // 'standard' or 'shiny' — variant tab selection
 let collection = {};
+
+/* ============================================================
+   AUTH STATE — who is logged in (independent of who is being viewed)
+   ============================================================ */
+let authState = { logged_in: false, user: null };
+
+async function fetchAuthState() {
+  try {
+    const resp = await fetch('/auth/me', { credentials: 'include' });
+    if (resp.ok) authState = await resp.json();
+  } catch (e) {
+    // /auth/me unreachable — silently treat as logged out
+    authState = { logged_in: false, user: null };
+  }
+  return authState;
+}
+
+function renderAuthArea() {
+  const el = document.getElementById('auth-area');
+  if (!el) return;
+  if (authState.logged_in) {
+    const ownDex = userKey(authState.user) === currentUser;
+    const switchBtn = ownDex
+      ? ''
+      : `<a class="auth-btn" href="?viewer=${encodeURIComponent(userKey(authState.user))}">My dex</a>`;
+    el.innerHTML = `
+      <span class="auth-status">Hi <strong>${escapeHtml(authState.user)}</strong></span>
+      ${switchBtn}
+      <a class="auth-btn logout" href="/auth/logout">Logout</a>
+    `;
+  } else {
+    el.innerHTML = `<a class="auth-btn" href="/auth/login">🔑 Login with Kick</a>`;
+  }
+}
+
+/* ============================================================
+   TEAM — picked Pokémon for battles
+   Storage: /teams/<userKey> = array of { id: int, shiny: bool }
+   Length 1-6. No nulls (compacted on save).
+   ============================================================ */
+const MAX_TEAM_SIZE = 6;
+let currentTeam = [];      // team of the viewer being viewed
+let pickingSlotIndex = -1; // index being edited in the picker modal
+
+async function fetchTeam(uKey) {
+  if (!cfg.firebaseUrl) return [];
+  try {
+    const r = await fetch(`${cfg.firebaseUrl}/teams/${encodeURIComponent(uKey)}.json`);
+    if (!r.ok) return [];
+    const data = await r.json();
+    if (!Array.isArray(data)) return [];
+    return data.filter(x => x && typeof x === 'object' && Number.isFinite(x.id))
+               .map(x => ({ id: x.id | 0, shiny: !!x.shiny }));
+  } catch { return []; }
+}
+
+async function saveTeam(team) {
+  if (!cfg.firebaseUrl) return false;
+  if (!authState.logged_in) return false;
+  const owner = userKey(authState.user);
+  // Only allow saving to your OWN team
+  if (owner !== currentUser) return false;
+  const clean = (team || []).slice(0, MAX_TEAM_SIZE)
+    .filter(x => x && Number.isFinite(x.id))
+    .map(x => ({ id: x.id | 0, shiny: !!x.shiny }));
+  try {
+    const r = await fetch(`${cfg.firebaseUrl}/teams/${encodeURIComponent(owner)}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(clean),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+function canEditTeam() {
+  return authState.logged_in && userKey(authState.user) === currentUser;
+}
+
+function renderTeam() {
+  const grid = document.getElementById('team-grid');
+  const hint = document.getElementById('team-edit-hint');
+  if (!grid) return;
+
+  const editable = canEditTeam();
+  if (hint) {
+    if (editable) {
+      hint.textContent = 'Click a slot to add · click × to remove';
+      hint.classList.add('editable');
+    } else if (authState.logged_in) {
+      hint.textContent = `Viewing ${escapeHtml(currentDisplay)}'s team`;
+      hint.classList.remove('editable');
+    } else {
+      hint.textContent = 'Login with Kick to manage your battle team';
+      hint.classList.remove('editable');
+    }
+  }
+
+  const cells = [];
+  for (let i = 0; i < MAX_TEAM_SIZE; i++) {
+    const entry = currentTeam[i];
+    if (entry) {
+      const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === entry.id) : null;
+      const sprites = cardSprites(entry.id);
+      const art = entry.shiny ? sprites.shiny : sprites.standard;
+      const isLeg = LEGEND_IDS.has(entry.id);
+      const slotKey = entry.shiny ? `${entry.id}_shiny` : String(entry.id);
+      const collEntry = collection[slotKey] || {};
+      const lv = collEntry.level || 5;
+      const classes = ['team-slot', 'filled'];
+      if (entry.shiny) classes.push('shiny');
+      if (isLeg) classes.push('legendary');
+      if (editable) classes.push('editable');
+      cells.push(`
+        <div class="${classes.join(' ')}" ${editable ? `onclick="openTeamPicker(${i})"` : ''}>
+          <span class="slot-level">Lv ${lv}</span>
+          ${editable ? `<span class="slot-remove" onclick="event.stopPropagation(); removeTeamSlot(${i})">×</span>` : ''}
+          <img src="${art}" alt="${escapeHtml(card ? card.name : '???')}">
+          <div class="slot-name">${escapeHtml(card ? card.name : '???')}${entry.shiny ? ' ✦' : ''}</div>
+        </div>
+      `);
+    } else {
+      const classes = ['team-slot'];
+      if (editable) classes.push('editable');
+      cells.push(`
+        <div class="${classes.join(' ')}" ${editable ? `onclick="openTeamPicker(${i})"` : ''}>
+          <div class="slot-empty">
+            ${editable ? '<span class="plus">+</span>Add Pokémon' : '— empty —'}
+          </div>
+        </div>
+      `);
+    }
+  }
+  grid.innerHTML = cells.join('');
+}
+
+function openTeamPicker(slotIndex) {
+  if (!canEditTeam()) return;
+  pickingSlotIndex = slotIndex;
+  const grid = document.getElementById('tp-grid');
+  document.getElementById('tp-title').textContent = `Pick a Pokémon for slot ${slotIndex + 1}`;
+
+  // List owned entries, fade those already on the team
+  const teamKeys = new Set(currentTeam.map(e => e.shiny ? `${e.id}_shiny` : String(e.id)));
+  const owned = [];
+  for (const [key, v] of Object.entries(collection)) {
+    if (key === '_meta') continue;
+    if (!v || !Number.isFinite(v.id)) continue;
+    const k = v.shiny ? `${v.id}_shiny` : String(v.id);
+    owned.push({ id: v.id, shiny: !!v.shiny, level: v.level || 5, inTeam: teamKeys.has(k) });
+  }
+  owned.sort((a, b) => a.id - b.id || (a.shiny ? 1 : 0) - (b.shiny ? 1 : 0));
+
+  if (owned.length === 0) {
+    grid.innerHTML = '<div class="tp-empty">No Pokémon yet — pull packs or catch wild spawns first.</div>';
+  } else {
+    grid.innerHTML = owned.map(o => {
+      const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === o.id) : null;
+      const sprites = cardSprites(o.id);
+      const art = o.shiny ? sprites.shiny : sprites.standard;
+      const isLeg = LEGEND_IDS.has(o.id);
+      const classes = ['tp-tile'];
+      if (o.shiny) classes.push('shiny');
+      if (isLeg) classes.push('legendary');
+      if (o.inTeam) classes.push('in-team');
+      return `
+        <div class="${classes.join(' ')}" ${o.inTeam ? '' : `onclick="selectFromPicker(${o.id}, ${o.shiny})"`}>
+          <img src="${art}" alt="${escapeHtml(card ? card.name : '???')}">
+          <div class="tp-name">${escapeHtml(card ? card.name : '???')}${o.shiny ? ' ✦' : ''}</div>
+          <div class="tp-lv">Lv ${o.level}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  document.getElementById('tp-backdrop').classList.add('show');
+}
+
+function closeTeamPicker(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('tp-backdrop').classList.remove('show');
+  pickingSlotIndex = -1;
+}
+
+async function selectFromPicker(id, shiny) {
+  if (pickingSlotIndex < 0) return;
+  const newTeam = currentTeam.slice();
+  newTeam[pickingSlotIndex] = { id, shiny: !!shiny };
+  currentTeam = newTeam.filter(x => x && Number.isFinite(x.id));
+  renderTeam();
+  closeTeamPicker();
+  await saveTeam(currentTeam);
+}
+
+async function removeTeamSlot(slotIndex) {
+  if (!canEditTeam()) return;
+  const newTeam = currentTeam.slice();
+  newTeam.splice(slotIndex, 1);
+  currentTeam = newTeam;
+  renderTeam();
+  await saveTeam(currentTeam);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const bd = document.getElementById('tp-backdrop');
+    if (bd && bd.classList.contains('show')) closeTeamPicker();
+  }
+});
 
 /* ============================================================
    LAYOUT — A/B testable: ?layout=sidebar  or  ?layout=stack
@@ -1776,6 +2260,8 @@ function render() {
     : '';
 
   renderTrainerLevel();
+  renderAuthArea();
+  renderTeam();
   renderRecentPulls();
   renderGrid(stats);
   renderTypeBreakdown(stats.unique);
@@ -2164,7 +2650,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
    PAGE WIRE-UP
    ============================================================ */
 async function load() {
-  collection = await fetchCollection(currentUser);
+  // Fetch auth + collection + team in parallel — independent network calls
+  const [_, coll, team] = await Promise.all([
+    fetchAuthState(),
+    fetchCollection(currentUser),
+    fetchTeam(currentUser),
+  ]);
+  collection = coll;
+  currentTeam = team;
   // Surface the original casing if the overlay stamped one onto the collection
   const stored = collection?._meta?.displayName;
   if (stored) {
