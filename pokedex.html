@@ -610,6 +610,16 @@
   .slot.caught {
     border-color: rgba(34,170,80,.5);
   }
+  /* Charity prize — distinct visual so it stands out as a special award. */
+  .slot .source-badge.charity {
+    background: linear-gradient(135deg, #00b140, #007a2c);
+    box-shadow: 0 0 10px rgba(0,177,64,.6);
+    border: 1px solid rgba(255,255,255,.3);
+  }
+  .slot.charity {
+    border-color: rgba(0,177,64,.7);
+    box-shadow: 0 0 14px rgba(0,177,64,.35);
+  }
   .slot .badge-row {
     position: absolute;
     top: 8px; right: 8px;
@@ -2689,17 +2699,26 @@ function renderGrid(stats) {
       + (isOwned ? ' owned' : '')
       + (isShinyView ? ' shiny' : '')
       + (isLegend ? ' legendary' : '')
-      + (source === 'caught' ? ' caught' : '');
+      + (source === 'caught' ? ' caught' : '')
+      + (source === 'charity' ? ' charity' : '');
     const typeColor = TYPE_COLORS[c.type]?.bg || '#888';
     slot.style.setProperty('--type-color', typeColor);
     const sprites = cardSprites(c.id);
     const art = isShinyView ? sprites.shiny : sprites.standard;
+    // Look up the entry once for the charity tooltip (uses entry.prize if present).
+    const slotKeyForTip = isShinyView ? `${c.id}_shiny` : String(c.id);
+    const entryForTip = collection[slotKeyForTip];
+    const charityTip = (entryForTip && entryForTip.prize)
+      ? entryForTip.prize
+      : 'Charity prize';
     // Source badge — small icon top-left so legendary/shiny badges (top-right) don't overlap
     const sourceBadge = source === 'caught'
       ? '<div class="source-badge caught" title="Caught from a wild spawn">🌿</div>'
-      : source === 'packed'
-        ? '<div class="source-badge packed" title="Pulled from a pack">📦</div>'
-        : '';
+      : source === 'charity'
+        ? `<div class="source-badge charity" title="${escapeHtml(charityTip)}">🎗️</div>`
+        : source === 'packed'
+          ? '<div class="source-badge packed" title="Pulled from a pack">📦</div>'
+          : '';
     slot.innerHTML = `
       <div class="num">#${String(c.id).padStart(3,'0')}</div>
       ${sourceBadge}
@@ -2925,12 +2944,15 @@ async function openModal(card) {
       : isShinyOwned
         ? '<span class="val" style="color:#ff66ff;">Shiny</span>'
         : '<span class="val">Standard</span>';
-    // Source: 'caught' (wild spawn) or 'packed' (pack pull, default for entries
-    // pre-dating the source field)
+    // Source: 'caught' (wild spawn), 'charity' (special award), or 'packed'
+    // (pack pull, default for entries pre-dating the source field)
     const source = entry?.source || 'packed';
+    const charityText = entry?.prize ? escapeHtml(entry.prize) : 'Charity prize';
     const sourceLabel = source === 'caught'
       ? '<span class="val" style="color:#22aa50;">🌿 From the wild</span>'
-      : '<span class="val" style="color:#ffcb05;">📦 From a pack</span>';
+      : source === 'charity'
+        ? `<span class="val" style="color:#00b140;">🎗️ ${charityText}</span>`
+        : '<span class="val" style="color:#ffcb05;">📦 From a pack</span>';
     statsEl.innerHTML = `
       <div class="stat-cell"><div class="lbl">HP</div><div class="val">${card.hp}</div></div>
       <div class="stat-cell"><div class="lbl">Type</div><div class="val">${card.type}</div></div>
