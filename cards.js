@@ -174,9 +174,13 @@ const KANTO_CARDS = [
   { id: 151, name: 'Mew',        type: 'Psychic',  hp: 100, legendary: true },
 ];
 
-// Returns { standard, shiny } URLs for a card id
+// Returns { standard, shiny } URLs for a card id.
+// Serves via jsDelivr's GitHub CDN (Cloudflare-backed, no rate limits) rather
+// than raw.githubusercontent.com directly — raw is per-IP throttled and starts
+// 429'ing during busy pack streams, causing random broken images on reveal.
+// jsDelivr proxies the same PokeAPI/sprites repo, so paths + files are identical.
 function cardSprites(id) {
-  const base = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
+  const base = 'https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/official-artwork';
   return {
     standard: `${base}/${id}.png`,
     shiny:    `${base}/shiny/${id}.png`,
