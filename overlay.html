@@ -2775,9 +2775,14 @@ const FLYING_POKEMON_IDS = new Set([
 ]);
 
 // Animated GIF sprite (PokeAPI's Showdown mirror — pre-animated, breathing).
-// Falls back to the standard static sprite if the GIF 404s.
+// Served via jsDelivr's Cloudflare CDN rather than raw.githubusercontent.com
+// because raw silently 429s / hangs under any real stream load, which meant
+// wild spawns rendered as an invisible sprite (no error fired, so the onerror
+// fallback below never triggered). jsDelivr proxies the same repo with heavy
+// edge caching. Falls back to the standard static sprite (also jsDelivr) if
+// a specific gif is missing from the CDN.
 function showdownSpriteUrl(id) {
-  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${id}.gif`;
+  return `https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/showdown/${id}.gif`;
 }
 
 function renderWildSpawn(card, spawn) {
