@@ -1973,6 +1973,32 @@ const Store = {
       });
     } catch (e) { console.warn('credit write failed:', e); }
   },
+  // Pity counter — how many pack pulls a viewer has opened since their most
+  // recent shiny. Fully hidden from viewers; used to guarantee a shiny once
+  // the counter would exceed PITY_THRESHOLD on the next pull. Prevents the
+  // "62 packs no shiny" streak that plagued gt54 and made viewers feel
+  // shinies were unreachable.
+  async getPity(user) {
+    const k = userKey(user);
+    if (!cfg.firebaseUrl) return 0;
+    try {
+      const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/pity/${encodeURIComponent(k)}.json`);
+      if (!r.ok) return 0;
+      const remote = await r.json();
+      return typeof remote === 'number' ? remote : 0;
+    } catch (e) { return 0; }
+  },
+  async setPity(user, n) {
+    const k = userKey(user);
+    if (!cfg.firebaseUrl) return;
+    try {
+      await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/pity/${encodeURIComponent(k)}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(n),
+      });
+    } catch (e) { console.warn('[pity] write failed:', e); }
+  },
   async markCompleter(user) {
     const k = userKey(user);
     const display = String(user || '').trim() || k;
@@ -2059,6 +2085,23 @@ function pickCardFor(collection, forceShiny = false, forceLegendary = false) {
 
 let FORCE_NEXT_SHINY = false;
 let FORCE_NEXT_LEGENDARY = false;
+
+/* ============================================================
+   PITY SYSTEM (hidden shiny guarantee)
+   ============================================================
+   Every pack pull without a shiny increments the viewer's pity
+   counter in Firebase (/pity/<userkey>). When the counter would
+   reach PITY_THRESHOLD on the next pull, that pull is guaranteed
+   shiny. Any shiny pull (organic, pity-forced, or rigged) resets
+   the counter to 0.
+
+   Hidden by design — no UI, no chat announcement. Viewers see a
+   shiny land and think "lucky!" Prevents the streak of 62+ packs
+   without a shiny that hurt gt54, spreads shinies to more viewers
+   without touching the base 1% roll rate. Base rate stays fair;
+   pity ensures nobody grinds indefinitely with no reward.
+   ============================================================ */
+const PITY_THRESHOLD = 15;
 
 /* ============================================================
    FORCED PACK (giveaway / charity prize rigging)
@@ -2386,11 +2429,20 @@ async function drain() {
       await wait(800);
 
       for (let i = 0; i < job.total; i++) {
-        const forceShiny = FORCE_NEXT_SHINY; FORCE_NEXT_SHINY = false;
+        const forceShinyManual = FORCE_NEXT_SHINY; FORCE_NEXT_SHINY = false;
         const forceLeg = FORCE_NEXT_LEGENDARY; FORCE_NEXT_LEGENDARY = false;
         // Snapshot completion state BEFORE this pull — used to detect the
         // 150→151 unique transition so the prize celebration fires once only.
         const wasComplete = countOwned(collection) === 151;
+        // Pity check — force shiny if this pull would push the counter to
+        // threshold. Counter tracks pack pulls since the viewer's most recent
+        // shiny. Fully hidden from viewers — they just see a lucky pull.
+        const pityCounter = await Store.getPity(gifter);
+        const pityWouldTrigger = (pityCounter + 1) >= PITY_THRESHOLD;
+        const forceShiny = forceShinyManual || pityWouldTrigger;
+        if (pityWouldTrigger) {
+          console.log(`[pity] ${gifter} at ${pityCounter}/${PITY_THRESHOLD} — forcing shiny on this pull`);
+        }
         // Check for a pre-staged rigged card (charity prize / giveaway flow).
         // Fires before the random roll so the broadcaster can hand-pick the
         // pull, including cards the viewer already owns. Consumes on use.
@@ -2410,6 +2462,9 @@ async function drain() {
         const slotKey = `${card.id}${card.shiny ? '_shiny' : ''}`;
         collection[slotKey] = newPokemonEntry(card.id, card.shiny, card.name);
         await Store.savePull(gifter, card);
+        // Pity accounting — reset on any shiny (organic, pity-triggered, OR
+        // rigged), increment on any regular. Silent background write.
+        await Store.setPity(gifter, card.shiny ? 0 : pityCounter + 1);
 
         // Celebrate only on the transition incomplete → 151 unique. Once they're
         // already complete, subsequent shiny-fill pulls must NOT refire.
