@@ -2468,10 +2468,17 @@ async function drain() {
 
         // Celebrate only on the transition incomplete → 151 unique. Once they're
         // already complete, subsequent shiny-fill pulls must NOT refire.
+        //
+        // NOTE: previously this had `break;` after celebrate() — that discarded
+        // every remaining pack in the queue. When a viewer dropped a big kicks
+        // total and completed mid-train (e.g. JD's 10,000 kicks → 10 packs, hit
+        // 151 on pack 2, lost the remaining 8), the unopened packs vanished
+        // silently. Now we play the celebration but let the loop continue so
+        // remaining packs open as shinies (pickCardFor auto-flips to the shiny
+        // pool when the standard variant is exhausted for that viewer).
         const isCompleteNow = countOwned(collection) === 151;
         if (!wasComplete && isCompleteNow) {
           await celebrate(gifter);
-          break;
         }
         await wait(400);
       }
