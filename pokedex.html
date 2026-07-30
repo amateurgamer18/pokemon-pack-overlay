@@ -1434,6 +1434,132 @@
     .team-slot.editable.filled .slot-remove { display: flex; }
   }
 
+  /* HP bar + status — battle-team health display */
+  .team-slot .hp-bar-outer {
+    position: absolute;
+    left: 6px; right: 6px;
+    bottom: 44px;
+    height: 5px;
+    background: rgba(0,0,0,.55);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,.5);
+  }
+  .team-slot .hp-bar-fill {
+    height: 100%;
+    background: #4ecb4e;   /* green (default healthy) */
+    transition: width 0.3s ease, background 0.3s ease;
+  }
+  .team-slot.hp-mid .hp-bar-fill  { background: #ffcc22; }   /* yellow < 50% */
+  .team-slot.hp-low .hp-bar-fill  { background: #ee2222; }   /* red < 25% */
+  .team-slot.hp-ko .hp-bar-fill   { background: #444; }      /* KO'd */
+  .team-slot.hp-ko img { filter: grayscale(1) brightness(0.5); }
+
+  .team-slot .hp-text {
+    position: absolute;
+    left: 6px; right: 6px;
+    bottom: 30px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,.9);
+    text-shadow: 0 1px 2px rgba(0,0,0,.7);
+    letter-spacing: .3px;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .team-slot .status-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 8px;
+    color: white;
+    letter-spacing: .5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    z-index: 3;
+  }
+  .status-badge.poison    { background: #a040a0; }
+  .status-badge.burn      { background: #ff6a1a; }
+  .status-badge.paralysis { background: #d4a83b; color: #000; text-shadow: none; }
+  .status-badge.sleep     { background: #6a6a6a; }
+  .status-badge.freeze    { background: #3badd8; }
+  .status-badge.confusion { background: #b06090; }
+
+  /* Center countdown — overlays the slot when Pokémon is healing at the Center */
+  .team-slot .center-timer {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 100, 180, 0.75);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    text-align: center;
+    z-index: 4;
+    border-radius: inherit;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .team-slot .center-timer .heart { font-size: 20px; margin-bottom: 4px; }
+  .team-slot .center-timer .time  { font-size: 16px; font-weight: 900; }
+  .team-slot .center-timer .cancel {
+    margin-top: 6px;
+    font-size: 10px;
+    padding: 3px 8px;
+    background: rgba(255,255,255,.2);
+    border: 1px solid rgba(255,255,255,.4);
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+  }
+  .team-slot .center-timer .cancel:hover { background: rgba(255,255,255,.35); }
+
+  /* "Send wounded to Pokémon Center" button in team header */
+  .center-btn {
+    background: linear-gradient(180deg, #ff5566, #cc2233);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    letter-spacing: .5px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  }
+  .center-btn:hover { filter: brightness(1.1); }
+  .center-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .center-btn .icon { margin-right: 6px; }
+
+  /* "Manage moves" button per team slot */
+  .team-slot .moves-btn {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(51, 102, 204, 0.85);
+    color: white;
+    border: none;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .3px;
+    z-index: 3;
+  }
+  .team-slot .moves-btn:hover { background: rgba(80, 130, 240, 1); }
+
   /* Team picker modal — list of viewer's collection to pick from */
   .tp-backdrop {
     position: fixed; inset: 0;
@@ -1637,6 +1763,149 @@
     margin-top: 6px;
     text-align: center;
   }
+
+  /* ============================================================
+     Moveset picker modal — per-Pokémon move management.
+     Two columns: currently-selected moveset (top, reorderable),
+     and available moves from that Pokémon's learnset (bottom).
+     ============================================================ */
+  .mp-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.85);
+    z-index: 210;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .mp-backdrop.show { display: flex; }
+  .mp-modal {
+    background: var(--navy-darker);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    max-width: 640px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .mp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+  }
+  .mp-header h3 {
+    margin: 0;
+    font-size: 17px;
+    color: var(--gold);
+  }
+  .mp-header .mp-close {
+    background: none; border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+  }
+  .mp-body {
+    padding: 12px 18px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .mp-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.6);
+    margin: 12px 0 6px;
+  }
+  .mp-current, .mp-available {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mp-move-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 60px 60px 60px auto;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 10px;
+    background: rgba(0,0,0,.35);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .mp-move-row.selected { border-color: var(--gold); background: rgba(255,203,5,.08); }
+  .mp-move-row .mv-order { text-align: center; font-weight: 700; color: var(--gold); }
+  .mp-move-row .mv-name { font-weight: 600; text-transform: capitalize; }
+  .mp-move-row .mv-type {
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-align: center;
+    letter-spacing: .3px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  }
+  .mp-move-row .mv-power  { text-align: center; }
+  .mp-move-row .mv-pp     { text-align: center; opacity: .7; font-size: 11px; }
+  .mp-move-row .mv-btn {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .mp-move-row .mv-btn.add    { background: #3a8b3a; color: white; }
+  .mp-move-row .mv-btn.remove { background: #a03030; color: white; }
+  .mp-move-row .mv-btn.up, .mp-move-row .mv-btn.down {
+    background: rgba(255,255,255,.15);
+    color: white;
+    width: 24px;
+    padding: 4px 0;
+  }
+  .mp-move-row .mv-btn:hover  { filter: brightness(1.2); }
+  .mp-move-row .mv-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .mp-move-priority-controls {
+    display: flex;
+    gap: 2px;
+  }
+  .mp-empty-hint {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255,255,255,.5);
+    font-style: italic;
+    font-size: 13px;
+  }
+  .mp-footer {
+    padding: 12px 18px;
+    border-top: 1px solid rgba(255,255,255,.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0,0,0,.25);
+  }
+  .mp-footer .mp-count { font-size: 12px; color: rgba(255,255,255,.7); }
+  .mp-footer .mp-save {
+    background: linear-gradient(180deg, var(--gold), var(--gold-dim));
+    color: var(--navy-dark);
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 13px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+  .mp-footer .mp-save:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -1691,6 +1960,9 @@
     <div class="team-header">
       <h2 class="team-title"><span class="icon">⚔</span> Battle Team</h2>
       <div class="team-edit-hint" id="team-edit-hint">Pokémon shown here will be used in battles.</div>
+      <button class="center-btn" id="center-btn" onclick="sendWoundedToCenter()" style="display:none">
+        <span class="icon">🏥</span>Send wounded to Pokémon Center
+      </button>
     </div>
     <div class="team-grid" id="team-grid">
       <!-- 6 slots rendered by renderTeam() -->
@@ -1719,6 +1991,23 @@
         </div>
       </div>
       <div class="tp-grid" id="tp-grid"></div>
+    </div>
+  </div>
+
+  <!-- Moveset picker modal — opened per team slot to manage that Pokémon's 4 battle moves -->
+  <div class="mp-backdrop" id="mp-backdrop" onclick="closeMovesetPicker(event)">
+    <div class="mp-modal" onclick="event.stopPropagation()">
+      <div class="mp-header">
+        <h3 id="mp-title">Manage Moves</h3>
+        <button class="mp-close" onclick="closeMovesetPicker()">×</button>
+      </div>
+      <div class="mp-body" id="mp-body">
+        <!-- Populated by renderMovesetPicker() -->
+      </div>
+      <div class="mp-footer">
+        <span class="mp-count" id="mp-count">0/4 selected</span>
+        <button class="mp-save" id="mp-save" onclick="saveMovesetPick()">Save</button>
+      </div>
     </div>
   </div>
 
@@ -1802,6 +2091,9 @@
 
 <script src="cards.js"></script>
 <script src="config.js"></script>
+<!-- Battle data (Gen 1 base stats + moves + learnsets + type chart) —
+     needed for HP calculation, move management UI, and battle previews. -->
+<script src="battle-data.js"></script>
 <script>
 const Q = new URLSearchParams(location.search);
 const cfg = Object.assign({ firebaseUrl: '' }, window.STREAM_CONFIG || {});
@@ -1868,6 +2160,175 @@ const MAX_TEAM_SIZE = 6;
 let currentTeam = [];      // team of the viewer being viewed
 let pickingSlotIndex = -1; // index being edited in the picker modal
 
+/* ============================================================
+   HEALING SYSTEM — HP + status persist between battles.
+   Recovery: natural (30 min) OR Pokémon Center (10 min).
+   All state stored per collection entry as:
+     currentHP     — actual HP (null = full)
+     status        — poison/burn/etc (null = healthy)
+     damagedAt     — timestamp of last damage (for natural regen)
+     centerUntil   — timestamp when Center finishes (null = not at Center)
+   ============================================================ */
+const NATURAL_HEAL_MS = 30 * 60 * 1000;   // 30 min from damage to fully healed
+const CENTER_HEAL_MS  = 10 * 60 * 1000;   // 10 min at Pokémon Center
+
+// Compute a Pokémon's max HP using the Gen 1 formula, per its level.
+// Falls back to a decorative HP if battle-data isn't loaded.
+function computeMaxHP(pokemonId, level) {
+  if (typeof BASE_STATS !== 'undefined' && BASE_STATS[pokemonId]) {
+    const base = BASE_STATS[pokemonId].hp;
+    // Gen 1: hp = floor(((2*base + IV) * level) / 100) + level + 10, with IV=15
+    return Math.floor(((2 * base + 15) * level) / 100) + level + 10;
+  }
+  // Decorative fallback (matches the pack overlay's HP field)
+  const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === pokemonId) : null;
+  return (card && card.hp) || 40;
+}
+
+// Compute current live HP + status by advancing the healing clock.
+// Returns { currentHP, maxHP, status, atCenter, healPct, secondsRemaining }
+function computeHealthState(entry) {
+  const level = entry.level || 5;
+  const maxHP = computeMaxHP(entry.id, level);
+  const now = Date.now();
+
+  // At Pokémon Center — clock ticking toward centerUntil
+  if (entry.centerUntil && entry.centerUntil > now) {
+    // Compute progress: (elapsed / total-center-time) * (maxHP - damagedHP)
+    const centerStart = entry.centerUntil - CENTER_HEAL_MS;
+    const elapsed = now - centerStart;
+    const pct = Math.max(0, Math.min(1, elapsed / CENTER_HEAL_MS));
+    const from = (entry.currentHP != null) ? entry.currentHP : 0;
+    const current = Math.round(from + (maxHP - from) * pct);
+    return {
+      currentHP: current,
+      maxHP,
+      status: entry.status || null,   // status clears only when Center completes
+      atCenter: true,
+      healPct: pct,
+      secondsRemaining: Math.ceil((entry.centerUntil - now) / 1000),
+    };
+  }
+  // Center just finished
+  if (entry.centerUntil && entry.centerUntil <= now) {
+    return { currentHP: maxHP, maxHP, status: null, atCenter: false, healPct: 1, secondsRemaining: 0 };
+  }
+
+  // Natural healing
+  if (entry.damagedAt) {
+    const elapsed = now - entry.damagedAt;
+    if (elapsed >= NATURAL_HEAL_MS) {
+      return { currentHP: maxHP, maxHP, status: null, atCenter: false, healPct: 1, secondsRemaining: 0 };
+    }
+    const pct = elapsed / NATURAL_HEAL_MS;
+    const from = (entry.currentHP != null) ? entry.currentHP : 0;
+    const current = Math.round(from + (maxHP - from) * pct);
+    return {
+      currentHP: current,
+      maxHP,
+      status: entry.status || null,
+      atCenter: false,
+      healPct: pct,
+      secondsRemaining: Math.ceil((NATURAL_HEAL_MS - elapsed) / 1000),
+    };
+  }
+
+  // Fully healthy (default — no damage recorded)
+  return { currentHP: maxHP, maxHP, status: null, atCenter: false, healPct: 1, secondsRemaining: 0 };
+}
+
+// Firebase writes for healing actions
+async function writeCollectionFields(slotKey, patch) {
+  if (!cfg.firebaseUrl) return false;
+  const uKey = userKey(currentUser);
+  try {
+    const url = `${cfg.firebaseUrl}/collections/${encodeURIComponent(uKey)}/${encodeURIComponent(slotKey)}.json`;
+    const r = await fetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+    return r.ok;
+  } catch (e) {
+    console.warn('[healing] write failed:', e);
+    return false;
+  }
+}
+
+// Team-heal action: identify wounded Pokémon on the current team and send them to Center.
+async function sendWoundedToCenter() {
+  if (!canEditTeam()) return;
+  const woundedSlots = [];
+  for (const entry of currentTeam) {
+    if (!entry) continue;
+    const slotKey = entry.shiny ? `${entry.id}_shiny` : String(entry.id);
+    const collEntry = collection[slotKey];
+    if (!collEntry) continue;
+    const health = computeHealthState(collEntry);
+    if (health.atCenter) continue;   // already there
+    if (health.healPct >= 1 && !health.status) continue;   // fully healthy
+    woundedSlots.push(slotKey);
+  }
+  if (woundedSlots.length === 0) {
+    alert('No wounded Pokémon on your team — everyone is healthy.');
+    return;
+  }
+  if (!confirm(`Send ${woundedSlots.length} wounded Pokémon to the Pokémon Center? They'll be ready in 10 minutes.`)) return;
+
+  const centerUntil = Date.now() + CENTER_HEAL_MS;
+  for (const slotKey of woundedSlots) {
+    const cur = collection[slotKey] || {};
+    const health = computeHealthState(cur);
+    // Freeze the current HP at send-in time — Center heals FROM this value TO max over 10 min
+    await writeCollectionFields(slotKey, { currentHP: health.currentHP, centerUntil });
+    collection[slotKey] = { ...cur, currentHP: health.currentHP, centerUntil };
+  }
+  renderTeam();
+}
+
+// Cancel Center early — captures partial heal, status doesn't clear (treatment incomplete)
+async function cancelCenter(slotKey) {
+  const cur = collection[slotKey];
+  if (!cur || !cur.centerUntil) return;
+  const health = computeHealthState(cur);
+  // Freeze partial heal into currentHP + damagedAt (natural regen continues from here)
+  const patch = {
+    currentHP: health.currentHP,
+    damagedAt: Date.now(),
+    centerUntil: null,
+  };
+  await writeCollectionFields(slotKey, patch);
+  collection[slotKey] = { ...cur, ...patch };
+  renderTeam();
+}
+
+// Countdown re-render — while any team member is at Center, tick every second
+let healthTicker = null;
+function startHealthTicker() {
+  stopHealthTicker();
+  healthTicker = setInterval(() => {
+    // Only re-render if any team member is currently at Center
+    let needsTick = false;
+    for (const entry of currentTeam) {
+      if (entry) {
+        const slotKey = entry.shiny ? `${entry.id}_shiny` : String(entry.id);
+        const collEntry = collection[slotKey];
+        if (collEntry && collEntry.centerUntil && collEntry.centerUntil > Date.now()) {
+          needsTick = true; break;
+        }
+      }
+    }
+    if (needsTick) renderTeam();
+    else stopHealthTicker();
+  }, 1000);
+}
+function stopHealthTicker() {
+  if (healthTicker) { clearInterval(healthTicker); healthTicker = null; }
+}
+
+// Format seconds as M:SS
+function formatHealTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 async function fetchTeam(uKey) {
   if (!cfg.firebaseUrl) return [];
   try {
@@ -1911,6 +2372,173 @@ async function saveTeam(team) {
   }
 }
 
+/* ============================================================
+   MOVESET PICKER — per-Pokémon 4-move management.
+   Viewer picks up to 4 moves from the Pokémon's learnset (at
+   current level) and orders them by priority (top = highest
+   priority for AI battle move selection).
+   Storage: /collections/<user>/<slot>/moves = array of move slugs,
+   ordered top-priority-first.
+   ============================================================ */
+let mpState = {
+  slotKey: null,
+  pokemonId: null,
+  level: 5,
+  selected: [],   // ordered move slugs (max 4)
+};
+
+// Get all moves this Pokémon has learned at its current level
+function movesLearnedAt(pokemonId, level) {
+  if (typeof LEARNSETS === 'undefined' || !LEARNSETS[pokemonId]) return [];
+  return LEARNSETS[pokemonId].filter(m => m.level <= level).map(m => m.move);
+}
+
+// Type color for move badges — reuse existing TYPE_COLORS if defined
+function moveTypeColor(type) {
+  if (typeof TYPE_COLORS !== 'undefined') {
+    const cap = type.charAt(0).toUpperCase() + type.slice(1);
+    return (TYPE_COLORS[cap] && TYPE_COLORS[cap].bg) || '#888';
+  }
+  return '#888';
+}
+
+function openMovesetPicker(slotKey, pokemonId, level) {
+  if (!canEditTeam()) return;
+  if (typeof MOVES === 'undefined' || typeof LEARNSETS === 'undefined') {
+    alert('Battle data still loading — try again in a second.');
+    return;
+  }
+  const collEntry = collection[slotKey] || {};
+  // If saved moves exist, use them; otherwise generate a default (damage-first ordering)
+  let initial = (collEntry.moves && collEntry.moves.length > 0)
+    ? collEntry.moves.slice(0, 4)
+    : null;
+  if (!initial) {
+    // Default: last 4 learned, sorted damaging first, then status
+    const learned = movesLearnedAt(pokemonId, level);
+    const last4 = learned.slice(-4);
+    last4.sort((a, b) => {
+      const pa = (MOVES[a] && MOVES[a].power) || 0;
+      const pb = (MOVES[b] && MOVES[b].power) || 0;
+      if ((pa > 0) !== (pb > 0)) return pb - pa;
+      return pb - pa;
+    });
+    initial = last4;
+  }
+  mpState = { slotKey, pokemonId, level, selected: initial.slice() };
+
+  const card = KANTO_CARDS.find(c => c.id === pokemonId);
+  document.getElementById('mp-title').textContent =
+    `Manage Moves — ${card ? card.name : '#' + pokemonId} (Lv ${level})`;
+  renderMovesetPicker();
+  document.getElementById('mp-backdrop').classList.add('show');
+}
+
+function closeMovesetPicker(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('mp-backdrop').classList.remove('show');
+}
+
+function renderMoveRow(slug, ctx) {
+  // ctx = 'selected' (with reorder + remove) or 'available' (with add)
+  const m = MOVES[slug];
+  if (!m) return '';
+  const displayName = m.name.replace(/-/g, ' ');
+  const power = m.power || '—';
+  const pp = m.pp || '—';
+  const color = moveTypeColor(m.type);
+  if (ctx === 'selected') {
+    const idx = mpState.selected.indexOf(slug);
+    return `
+      <div class="mp-move-row selected">
+        <div class="mv-order">${idx + 1}</div>
+        <div class="mv-name" title="${escapeHtml(m.effect || '')}">${escapeHtml(displayName)}</div>
+        <div class="mv-type" style="background:${color}">${escapeHtml(m.type)}</div>
+        <div class="mv-power">${power}</div>
+        <div class="mv-pp">${pp} PP</div>
+        <div class="mp-move-priority-controls">
+          <button class="mv-btn up"     onclick="mpMoveUp('${slug}')"   ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button class="mv-btn down"   onclick="mpMoveDown('${slug}')" ${idx === mpState.selected.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="mv-btn remove" onclick="mpRemove('${slug}')">Remove</button>
+        </div>
+      </div>
+    `;
+  } else {
+    const isFull = mpState.selected.length >= 4;
+    return `
+      <div class="mp-move-row">
+        <div class="mv-order">—</div>
+        <div class="mv-name" title="${escapeHtml(m.effect || '')}">${escapeHtml(displayName)}</div>
+        <div class="mv-type" style="background:${color}">${escapeHtml(m.type)}</div>
+        <div class="mv-power">${power}</div>
+        <div class="mv-pp">${pp} PP</div>
+        <div class="mp-move-priority-controls">
+          <button class="mv-btn add" onclick="mpAdd('${slug}')" ${isFull ? 'disabled' : ''}>Add</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function renderMovesetPicker() {
+  const body = document.getElementById('mp-body');
+  const learned = movesLearnedAt(mpState.pokemonId, mpState.level);
+  const available = learned.filter(slug => !mpState.selected.includes(slug));
+
+  const selectedHtml = mpState.selected.length > 0
+    ? mpState.selected.map(slug => renderMoveRow(slug, 'selected')).join('')
+    : '<div class="mp-empty-hint">No moves selected. Pick up to 4 from below.</div>';
+
+  const availableHtml = available.length > 0
+    ? available.map(slug => renderMoveRow(slug, 'available')).join('')
+    : '<div class="mp-empty-hint">All learned moves are already selected.</div>';
+
+  body.innerHTML = `
+    <div class="mp-section-title">Battle moveset (priority order — top used first)</div>
+    <div class="mp-current">${selectedHtml}</div>
+    <div class="mp-section-title" style="margin-top:20px">Available moves (learned by Lv ${mpState.level})</div>
+    <div class="mp-available">${availableHtml}</div>
+  `;
+  document.getElementById('mp-count').textContent = `${mpState.selected.length}/4 selected`;
+  document.getElementById('mp-save').disabled = mpState.selected.length === 0;
+}
+
+function mpAdd(slug) {
+  if (mpState.selected.length >= 4) return;
+  if (mpState.selected.includes(slug)) return;
+  mpState.selected.push(slug);
+  renderMovesetPicker();
+}
+function mpRemove(slug) {
+  mpState.selected = mpState.selected.filter(s => s !== slug);
+  renderMovesetPicker();
+}
+function mpMoveUp(slug) {
+  const i = mpState.selected.indexOf(slug);
+  if (i <= 0) return;
+  [mpState.selected[i-1], mpState.selected[i]] = [mpState.selected[i], mpState.selected[i-1]];
+  renderMovesetPicker();
+}
+function mpMoveDown(slug) {
+  const i = mpState.selected.indexOf(slug);
+  if (i === -1 || i >= mpState.selected.length - 1) return;
+  [mpState.selected[i+1], mpState.selected[i]] = [mpState.selected[i], mpState.selected[i+1]];
+  renderMovesetPicker();
+}
+async function saveMovesetPick() {
+  if (mpState.selected.length === 0) return;
+  const slotKey = mpState.slotKey;
+  const moves = mpState.selected.slice();
+  const ok = await writeCollectionFields(slotKey, { moves });
+  if (!ok) {
+    alert('Failed to save moves — network issue. Try again.');
+    return;
+  }
+  collection[slotKey] = { ...(collection[slotKey] || {}), moves };
+  closeMovesetPicker();
+  renderTeam();
+}
+
 function canEditTeam() {
   return authState.logged_in && userKey(authState.user) === currentUser;
 }
@@ -1935,6 +2563,8 @@ function renderTeam() {
   }
 
   const cells = [];
+  let hasWounded = false;
+  let hasAtCenter = false;
   for (let i = 0; i < MAX_TEAM_SIZE; i++) {
     const entry = currentTeam[i];
     if (entry) {
@@ -1945,16 +2575,53 @@ function renderTeam() {
       const slotKey = entry.shiny ? `${entry.id}_shiny` : String(entry.id);
       const collEntry = collection[slotKey] || {};
       const lv = collEntry.level || 5;
+      const health = computeHealthState({ ...collEntry, id: entry.id, level: lv });
+      const hpPct = health.maxHP > 0 ? (health.currentHP / health.maxHP) : 1;
+      const isKO = health.currentHP <= 0;
+      const isWounded = !health.atCenter && (hpPct < 1 || health.status);
+      if (isWounded) hasWounded = true;
+      if (health.atCenter) hasAtCenter = true;
+
       const classes = ['team-slot', 'filled'];
       if (entry.shiny) classes.push('shiny');
       if (isLeg) classes.push('legendary');
       if (editable) classes.push('editable');
+      if (isKO) classes.push('hp-ko');
+      else if (hpPct < 0.25) classes.push('hp-low');
+      else if (hpPct < 0.5) classes.push('hp-mid');
+
+      // Status badge (only if not KO'd — KO takes visual priority)
+      const statusBadge = (health.status && !isKO)
+        ? `<span class="status-badge ${health.status}">${health.status.slice(0, 3).toUpperCase()}</span>`
+        : '';
+
+      // Center countdown overlay — takes over the slot visually while healing
+      const centerOverlay = health.atCenter ? `
+        <div class="center-timer">
+          <div class="heart">🏥</div>
+          <div class="time">${formatHealTime(health.secondsRemaining)}</div>
+          ${editable ? `<button class="cancel" onclick="event.stopPropagation(); cancelCenter('${slotKey}')">Cancel</button>` : ''}
+        </div>
+      ` : '';
+
+      // Moves button — only visible if editable AND not at Center
+      const movesBtn = (editable && !health.atCenter)
+        ? `<button class="moves-btn" onclick="event.stopPropagation(); openMovesetPicker('${slotKey}', ${entry.id}, ${lv})">Moves</button>`
+        : '';
+
+      const hpText = isKO ? 'KO' : `${health.currentHP}/${health.maxHP}`;
+
       cells.push(`
-        <div class="${classes.join(' ')}" ${editable ? `onclick="openTeamPicker(${i})"` : ''}>
+        <div class="${classes.join(' ')}" ${editable && !health.atCenter ? `onclick="openTeamPicker(${i})"` : ''}>
           <span class="slot-level">Lv ${lv}</span>
           ${editable ? `<span class="slot-remove" onclick="event.stopPropagation(); removeTeamSlot(${i})">×</span>` : ''}
+          ${statusBadge}
           <img src="${art}" alt="${escapeHtml(card ? card.name : '???')}">
+          <div class="hp-text">${hpText}</div>
+          <div class="hp-bar-outer"><div class="hp-bar-fill" style="width:${Math.max(0, hpPct * 100).toFixed(1)}%"></div></div>
           <div class="slot-name">${escapeHtml(card ? card.name : '???')}${entry.shiny ? ' ✦' : ''}</div>
+          ${movesBtn}
+          ${centerOverlay}
         </div>
       `);
     } else {
@@ -1970,6 +2637,23 @@ function renderTeam() {
     }
   }
   grid.innerHTML = cells.join('');
+
+  // Show/hide the "Send wounded to Pokémon Center" button
+  const centerBtn = document.getElementById('center-btn');
+  if (centerBtn) {
+    if (editable && hasWounded) {
+      centerBtn.style.display = '';
+      centerBtn.disabled = false;
+    } else if (editable && hasAtCenter) {
+      // Already at center — nothing to send, hide the button
+      centerBtn.style.display = 'none';
+    } else {
+      centerBtn.style.display = 'none';
+    }
+  }
+
+  // Kick off the per-second re-render if any team member is currently at Center
+  if (hasAtCenter) startHealthTicker();
 }
 
 // Picker control state — reset each time the picker opens
@@ -2221,6 +2905,8 @@ async function removeFromTeamFromModal(id, shiny) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    const mp = document.getElementById('mp-backdrop');
+    if (mp && mp.classList.contains('show')) { closeMovesetPicker(); return; }
     const bd = document.getElementById('tp-backdrop');
     if (bd && bd.classList.contains('show')) closeTeamPicker();
   }

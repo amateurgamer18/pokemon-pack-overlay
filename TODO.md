@@ -19,6 +19,14 @@ A running list of stream gimmicks and features. Anything checked is shipped.
 - [x] **Suspense reveal** — chat sees "@X threw a pokéball at <Name>! Will it catch?!" first; the "🎉 CAUGHT IT!" reveal arrives 8 seconds later via the Catch Reveal action so it syncs with the overlay celebration
 - [x] **Source badge on dex** — 📦 packed vs 🌿 caught, so viewers can see how they got each Pokémon
 - [x] **Timed chat message** — promotional banner every 10-15 min explaining the system to new viewers
+- [x] **Custom domain (2026-05-19)** — `amateurgamer.live` on Cloudflare DNS, GitHub Pages HTTPS. `!dex` links now use the custom domain.
+- [x] **Kick OAuth via Cloudflare Worker (2026-05-19)** — full PKCE flow at `amateurgamer.live/auth/*`. Powers logged-in team editing on the pokédex.
+- [x] **Team picker UI (2026-05-19)** — 6-slot team selector on pokédex, edit-mode gated to authenticated owner. Firebase `/teams/` locked to service-account writes via Worker.
+- [x] **Rigged-pack mechanic (2026-06-18)** — broadcaster writes `/forced_pack/<userkey>` with `{id, shiny}`. Next `!redeempack` from that viewer uses the rigged card, plays normal animation, auto-clears the node. Built for the Macmillan charity shiny Charizard reveal.
+- [x] **jsDelivr CDN swap for sprites (2026-07-08)** — swapped `raw.githubusercontent.com` (per-IP throttled, silently 429s during busy streams) to `cdn.jsdelivr.net`. Fixes random broken sprite images during pack opens and wild spawns.
+- [x] **Pity system (2026-07-08)** — hidden shiny guarantee. Every viewer's pack pulls since their last shiny tracked in `/pity/<userkey>`. When counter would hit 15 on next pull, force shiny. Fully hidden from viewers — no UI, no chat announcement. Prevents "62 packs no shiny" streaks (looking at you, gt54). Base 1% roll rate unchanged; effective rate is ~1 in 44 organically → ~1 in 13 with pity active.
+- [x] **`!credits [@user]` command (2026-07-09)** — viewer checks their own or someone else's credits + banked packs. Educational fallback message when at 0. 30s per-sender cooldown.
+- [x] **Completion break bug fix (2026-07-09)** — previously, hitting 151 unique mid-pack-train (e.g. big kicks drop) discarded remaining queued packs silently. JD lost 8 packs from a 10K kicks drop before this was caught. Fix lets celebration play, then packs continue opening as shinies.
 
 ## Stream-side mini-games (no code, just announce on stream)
 
@@ -86,13 +94,11 @@ See conversation memory `team_battle_design.md` for the full design notes.
 
 ## Parked ideas — maybe later
 
-- [ ] **Rigged-pack mechanic for giveaways / charity prizes** — broadcaster writes `/forced_pack/<userkey>` to Firebase with `{id, shiny}`, viewer types `!redeempack` next stream, overlay detects the forced card, plays the normal pack animation, clears the node. Real on-stream hype moment instead of silent Firebase write. Discussed after Macmillan Cancer Charity 2026 event — would have been ideal for revealing jdjammer13's shiny Charizard prize live on stream. Minimum build: ~45 min to 1 hr. Two changes to overlay.html: (1) check for `/forced_pack/<userkey>` before random card roll, use it + delete the node if present, (2) bypass dupe-prevention check when forced card is in play (so users who already own the standard variant can still receive the shiny). No new chat commands needed — manual Firebase write like the charity Charizard flow. Build when the next charity event or special giveaway is on the calendar.
 - [ ] **Pokéball shop** — viewers buy Great / Ultra / Master Balls to boost wild catch rate. Suggested on stream 2026-05-19. Held off because the currency question is unsettled (Kicks already convert to packs; adding another spend path complicates the economy). Worth revisiting once battles are running and we see what viewers want to spend on. Likely design: `/balls/<userkey>` Firebase inventory, `!buyball` / `!balls` / `!pokecatch <type>` commands, failed attempts still burn the ball for real stakes. ~4-6 hr build.
 - [ ] **Battle-only evolution** — Suggested on stream 2026-05-19. Conflicts with the dex's "151 unique" model (every evolution is already a separate card in packs), so dex-side evolution doesn't make sense. ONLY interesting path: when in battle, a Pokémon above Lv X fights AS its evolved form (Charmander → Charizard) with evolved stats, but stays as Charmander on the dex. Cosmetic on the collection, mechanical in combat. Pre-req: battles must exist. ~3-5 hr build on top of battles. Chat ELI5 reply for now: "Every evolution is already in packs — pull Charmander, Charmeleon, or Charizard directly. Battle-evolution is something I'm thinking about for after battles ship."
 
 ## Polish that might come up
 
-- [ ] Custom domain to replace github.io URL ($10/year)
 - [ ] Private repo via Cloudflare Pages (if code-hiding becomes worth it)
 - [ ] Discord role sync — viewer hits level threshold → Discord role auto-assigned
 - [ ] Mobile-optimised pokédex view (already responsive but could be tightened)
