@@ -2243,7 +2243,10 @@ function computeHealthState(entry) {
   if (entry.centerUntil && entry.centerUntil > now) {
     // Need to derive centerStart: for that we need the total scheduled duration.
     // Recompute from the entry's damagedHP (currentHP field, frozen at send-in).
-    const damagedHP = (entry.currentHP != null) ? entry.currentHP : 0;
+    // currentHP null/undefined means "not stored" — treat as fully healthy for
+    // heal start. Only currentHP = 0 (explicit) means KO'd. This matters for
+    // status-only entries where HP is full but the Pokémon is poisoned/burned.
+    const damagedHP = (entry.currentHP != null) ? entry.currentHP : maxHP;
     const totalCenterMs = computeHealTime(damagedHP, maxHP, entry.status, MAX_CENTER_HEAL_MS);
     const centerStart = entry.centerUntil - totalCenterMs;
     const elapsed = now - centerStart;
@@ -2265,7 +2268,10 @@ function computeHealthState(entry) {
 
   // Natural healing — proportional to damage
   if (entry.damagedAt) {
-    const damagedHP = (entry.currentHP != null) ? entry.currentHP : 0;
+    // currentHP null/undefined means "not stored" — treat as fully healthy for
+    // heal start. Only currentHP = 0 (explicit) means KO'd. This matters for
+    // status-only entries where HP is full but the Pokémon is poisoned/burned.
+    const damagedHP = (entry.currentHP != null) ? entry.currentHP : maxHP;
     const totalNaturalMs = computeHealTime(damagedHP, maxHP, entry.status, MAX_NATURAL_HEAL_MS);
     const elapsed = now - entry.damagedAt;
     if (totalNaturalMs === 0 || elapsed >= totalNaturalMs) {
