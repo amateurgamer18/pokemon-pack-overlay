@@ -1969,6 +1969,19 @@
     </div>
   </section>
 
+  <!-- Pokémon Center section — shows Pokémon currently healing (auto-hidden when empty).
+       Populated by any collection entry with centerUntil > now. Sending to Center moves
+       the Pokémon out of the team, freeing the team slot for a substitute. -->
+  <section class="team-section center-section" id="center-section" style="display:none">
+    <div class="team-header">
+      <h2 class="team-title"><span class="icon">🏥</span> At the Pokémon Center</h2>
+      <div class="team-edit-hint">Healing — will return when the timer ends.</div>
+    </div>
+    <div class="team-grid" id="center-grid">
+      <!-- Tiles rendered by renderCenter() -->
+    </div>
+  </section>
+
   <!-- Team picker modal — opened when editing a team slot -->
   <div class="tp-backdrop" id="tp-backdrop" onclick="closeTeamPicker(event)">
     <div class="tp-modal" onclick="event.stopPropagation()">
@@ -2251,43 +2264,102 @@ async function writeCollectionFields(slotKey, patch) {
   }
 }
 
-// Team-heal action: identify wounded Pokémon on the current team and send them to Center.
+// Team-heal action: identify wounded Pokémon on the current team, send them
+// to Center, and REMOVE them from the team so the slots free up for substitutes.
 async function sendWoundedToCenter() {
   if (!canEditTeam()) return;
-  const woundedSlots = [];
-  for (const entry of currentTeam) {
-    if (!entry) continue;
+  const woundedSlotsAndIndices = [];
+  currentTeam.forEach((entry, idx) => {
+    if (!entry) return;
     const slotKey = entry.shiny ? `${entry.id}_shiny` : String(entry.id);
     const collEntry = collection[slotKey];
-    if (!collEntry) continue;
-    const health = computeHealthState(collEntry);
-    if (health.atCenter) continue;   // already there
-    if (health.healPct >= 1 && !health.status) continue;   // fully healthy
-    woundedSlots.push(slotKey);
-  }
-  if (woundedSlots.length === 0) {
+    if (!collEntry) return;
+    const health = computeHealthState({ ...collEntry, id: entry.id, level: (collEntry.level || 5) });
+    if (health.atCenter) return;
+    if (health.healPct >= 1 && !health.status) return;
+    woundedSlotsAndIndices.push({ slotKey, idx });
+  });
+  if (woundedSlotsAndIndices.length === 0) {
     alert('No wounded Pokémon on your team — everyone is healthy.');
     return;
   }
-  if (!confirm(`Send ${woundedSlots.length} wounded Pokémon to the Pokémon Center? They'll be ready in 10 minutes.`)) return;
+  if (!confirm(`Send ${woundedSlotsAndIndices.length} wounded Pokémon to the Pokémon Center? They'll be ready in 10 minutes. Their team slots will be freed up for substitutes.`)) return;
 
   const centerUntil = Date.now() + CENTER_HEAL_MS;
-  for (const slotKey of woundedSlots) {
+  for (const { slotKey } of woundedSlotsAndIndices) {
     const cur = collection[slotKey] || {};
-    const health = computeHealthState(cur);
-    // Freeze the current HP at send-in time — Center heals FROM this value TO max over 10 min
+    const level = cur.level || 5;
+    // Compute current effective HP (natural regen might have healed a bit since damagedAt)
+    // and freeze that as the starting point for Center's 10-min heal.
+    const health = computeHealthState({ ...cur, level });
     await writeCollectionFields(slotKey, { currentHP: health.currentHP, centerUntil });
     collection[slotKey] = { ...cur, currentHP: health.currentHP, centerUntil };
   }
+  // Remove all wounded Pokémon from the team — they're at Center now, freeing their slots
+  const idxToRemove = new Set(woundedSlotsAndIndices.map(w => w.idx));
+  currentTeam = currentTeam.filter((_, i) => !idxToRemove.has(i));
+  await saveTeam(currentTeam);
   renderTeam();
+  renderCenter();
 }
 
-// Cancel Center early — captures partial heal, status doesn't clear (treatment incomplete)
+// Render the Pokémon Center section — tiles for each collection entry with centerUntil > now.
+// Sorted by time-remaining ascending so the closest-to-ready shows first.
+function renderCenter() {
+  const grid = document.getElementById('center-grid');
+  const section = document.getElementById('center-section');
+  if (!grid || !section) return;
+
+  const editable = canEditTeam();
+  const now = Date.now();
+  const atCenter = [];
+  for (const [slotKey, entry] of Object.entries(collection)) {
+    if (slotKey === '_meta' || !entry || typeof entry.id !== 'number') continue;
+    if (!entry.centerUntil || entry.centerUntil <= now) continue;
+    atCenter.push({ slotKey, entry });
+  }
+
+  if (atCenter.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  atCenter.sort((a, b) => a.entry.centerUntil - b.entry.centerUntil);
+
+  const cells = atCenter.map(({ slotKey, entry }) => {
+    const isShiny = slotKey.endsWith('_shiny');
+    const card = KANTO_CARDS.find(c => c.id === entry.id);
+    const sprites = cardSprites(entry.id);
+    const art = isShiny ? sprites.shiny : sprites.standard;
+    const isLeg = LEGEND_IDS.has(entry.id);
+    const level = entry.level || 5;
+    const health = computeHealthState({ ...entry, level });
+    const classes = ['team-slot', 'filled'];
+    if (isShiny) classes.push('shiny');
+    if (isLeg) classes.push('legendary');
+    return `
+      <div class="${classes.join(' ')}">
+        <span class="slot-level">Lv ${level}</span>
+        <img src="${art}" alt="${escapeHtml(card ? card.name : '???')}">
+        <div class="slot-name">${escapeHtml(card ? card.name : '???')}${isShiny ? ' ✦' : ''}</div>
+        <div class="center-timer">
+          <div class="heart">🏥</div>
+          <div class="time">${formatHealTime(health.secondsRemaining)}</div>
+          ${editable ? `<button class="cancel" onclick="cancelCenter('${slotKey}')">Cancel</button>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  grid.innerHTML = cells.join('');
+  startHealthTicker();
+}
+
+// Cancel Center early — captures partial heal, status doesn't clear (treatment incomplete).
+// Pokémon leaves the Center in a wounded state; viewer can re-add to team via picker.
 async function cancelCenter(slotKey) {
   const cur = collection[slotKey];
   if (!cur || !cur.centerUntil) return;
-  const health = computeHealthState(cur);
-  // Freeze partial heal into currentHP + damagedAt (natural regen continues from here)
+  const health = computeHealthState({ ...cur, level: cur.level || 5 });
   const patch = {
     currentHP: health.currentHP,
     damagedAt: Date.now(),
@@ -2296,26 +2368,29 @@ async function cancelCenter(slotKey) {
   await writeCollectionFields(slotKey, patch);
   collection[slotKey] = { ...cur, ...patch };
   renderTeam();
+  renderCenter();
 }
 
-// Countdown re-render — while any team member is at Center, tick every second
+// Countdown re-render — while any Pokémon is at Center (team or not), tick every second.
 let healthTicker = null;
 function startHealthTicker() {
   stopHealthTicker();
   healthTicker = setInterval(() => {
-    // Only re-render if any team member is currently at Center
+    // Check if ANY collection entry is currently at Center
     let needsTick = false;
-    for (const entry of currentTeam) {
-      if (entry) {
-        const slotKey = entry.shiny ? `${entry.id}_shiny` : String(entry.id);
-        const collEntry = collection[slotKey];
-        if (collEntry && collEntry.centerUntil && collEntry.centerUntil > Date.now()) {
-          needsTick = true; break;
-        }
-      }
+    const now = Date.now();
+    for (const [k, e] of Object.entries(collection)) {
+      if (k === '_meta' || !e) continue;
+      if (e.centerUntil && e.centerUntil > now) { needsTick = true; break; }
     }
-    if (needsTick) renderTeam();
-    else stopHealthTicker();
+    if (needsTick) {
+      renderCenter();
+      // Only re-render team if the tick affects team display (unlikely now that Center
+      // Pokémon are removed from team — but harmless if we re-render anyway on cadence)
+    } else {
+      stopHealthTicker();
+      renderCenter();   // final render to clear the section when all healed
+    }
   }, 1000);
 }
 function stopHealthTicker() {
@@ -2654,6 +2729,10 @@ function renderTeam() {
 
   // Kick off the per-second re-render if any team member is currently at Center
   if (hasAtCenter) startHealthTicker();
+
+  // Also re-render the Pokémon Center section — coupled since sends can move
+  // Pokémon between the two sections. renderCenter() is a no-op when empty.
+  renderCenter();
 }
 
 // Picker control state — reset each time the picker opens
@@ -2696,10 +2775,13 @@ function renderPickerGrid() {
 
   // Gather owned entries with metadata for sort/filter
   const teamKeys = new Set(currentTeam.map(e => e.shiny ? `${e.id}_shiny` : String(e.id)));
+  const now = Date.now();
   let owned = [];
   for (const [key, v] of Object.entries(collection)) {
     if (key === '_meta') continue;
     if (!v || !Number.isFinite(v.id)) continue;
+    // Skip Pokémon currently at the Pokémon Center — they can't be added to team while healing
+    if (v.centerUntil && v.centerUntil > now) continue;
     const k = v.shiny ? `${v.id}_shiny` : String(v.id);
     owned.push({
       id: v.id,
