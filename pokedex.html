@@ -1763,6 +1763,14 @@
     margin-top: 6px;
     text-align: center;
   }
+  .modal-team-action .center-modal-btn {
+    background: linear-gradient(180deg, #ff5566 0%, #cc2233 100%);
+    border-color: #a01e2e;
+    color: #fff;
+  }
+  .modal-team-action .center-modal-btn:hover {
+    box-shadow: 0 5px 14px rgba(255,50,60,.45);
+  }
 
   /* ============================================================
      Moveset picker modal — per-Pokémon move management.
@@ -2404,6 +2412,19 @@ function formatHealTime(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// Canonical Pokémon status abbreviations (same as used in the OG games)
+const STATUS_LABEL = {
+  poison:    'PSN',
+  burn:      'BRN',
+  paralysis: 'PAR',
+  sleep:     'SLP',
+  freeze:    'FRZ',
+  confusion: 'CNF',
+};
+function statusLabel(status) {
+  return STATUS_LABEL[status] || (status || '').slice(0, 3).toUpperCase();
+}
+
 async function fetchTeam(uKey) {
   if (!cfg.firebaseUrl) return [];
   try {
@@ -2667,7 +2688,7 @@ function renderTeam() {
 
       // Status badge (only if not KO'd — KO takes visual priority)
       const statusBadge = (health.status && !isKO)
-        ? `<span class="status-badge ${health.status}">${health.status.slice(0, 3).toUpperCase()}</span>`
+        ? `<span class="status-badge ${health.status}" title="${escapeHtml(health.status)}">${statusLabel(health.status)}</span>`
         : '';
 
       // Center countdown overlay — takes over the slot visually while healing
@@ -2936,32 +2957,85 @@ function renderModalTeamAction(card) {
   const teamFull = currentTeam.length >= MAX_TEAM_SIZE;
   const label    = variant.shiny ? ' ✦' : '';
 
+  // Look up the actual collection entry to check health state
+  const slotKey = variant.shiny ? `${card.id}_shiny` : String(card.id);
+  const entry = collection[slotKey] || {};
+  const level = entry.level || 5;
+  const health = computeHealthState({ ...entry, id: card.id, level });
+  const canSendToCenter = !health.atCenter && (health.currentHP < health.maxHP || health.status);
+
+  // Team action block — shown first
+  let teamBlock;
   if (inTeam) {
-    el.innerHTML = `
-      <div>
-        <button class="remove" onclick="removeFromTeamFromModal(${card.id}, ${variant.shiny})">
-          ✓ On your team · Remove
-        </button>
-        <div class="ta-hint">Click to remove ${escapeHtml(card.name)}${label} from your battle team.</div>
-      </div>
+    teamBlock = `
+      <button class="remove" onclick="removeFromTeamFromModal(${card.id}, ${variant.shiny})">
+        ✓ On your team · Remove
+      </button>
+      <div class="ta-hint">Click to remove ${escapeHtml(card.name)}${label} from your battle team.</div>
+    `;
+  } else if (health.atCenter) {
+    teamBlock = `
+      <button disabled>🏥 At Pokémon Center</button>
+      <div class="ta-hint">Healing — ready in ${formatHealTime(health.secondsRemaining)}. Can't add to team while healing.</div>
     `;
   } else if (teamFull) {
-    el.innerHTML = `
-      <div>
-        <button disabled>⚔ Team is full (6 / 6)</button>
-        <div class="ta-hint">Remove a Pokémon from your team first.</div>
-      </div>
+    teamBlock = `
+      <button disabled>⚔ Team is full (6 / 6)</button>
+      <div class="ta-hint">Remove a Pokémon from your team first.</div>
     `;
   } else {
-    el.innerHTML = `
-      <div>
-        <button onclick="addToTeamFromModal(${card.id}, ${variant.shiny})">
-          ⚔ Add to Battle Team
-        </button>
-        <div class="ta-hint">${escapeHtml(card.name)}${label} will be available for !battle matches.</div>
-      </div>
+    teamBlock = `
+      <button onclick="addToTeamFromModal(${card.id}, ${variant.shiny})">
+        ⚔ Add to Battle Team
+      </button>
+      <div class="ta-hint">${escapeHtml(card.name)}${label} will be available for !battle matches.</div>
     `;
   }
+
+  // Center action block — shown below team action if wounded and not already at Center
+  let centerBlock = '';
+  if (canSendToCenter) {
+    centerBlock = `
+      <button class="center-modal-btn" onclick="sendSingleToCenter('${slotKey}', ${card.id})">
+        🏥 Send to Pokémon Center
+      </button>
+      <div class="ta-hint">Heal fully in 10 minutes (vs 30 min natural). If on your team, this will also remove ${escapeHtml(card.name)}${label} from the team.</div>
+    `;
+  }
+
+  el.innerHTML = `<div>${teamBlock}</div>${centerBlock ? `<div style="margin-top:14px">${centerBlock}</div>` : ''}`;
+}
+
+// Send a single Pokémon to the Pokémon Center from the modal. Also removes
+// them from the team if they were on it (mirrors the bulk button's behavior).
+async function sendSingleToCenter(slotKey, pokemonId) {
+  if (!canEditTeam()) return;
+  const cur = collection[slotKey] || {};
+  const level = cur.level || 5;
+  const health = computeHealthState({ ...cur, id: pokemonId, level });
+  if (health.atCenter) return;   // already there
+  if (health.currentHP >= health.maxHP && !health.status) {
+    alert('This Pokémon is fully healthy — nothing to heal.');
+    return;
+  }
+  const centerUntil = Date.now() + CENTER_HEAL_MS;
+  // Freeze current HP as the starting point, then Center brings it to full over 10 min
+  await writeCollectionFields(slotKey, { currentHP: health.currentHP, centerUntil });
+  collection[slotKey] = { ...cur, currentHP: health.currentHP, centerUntil };
+
+  // Remove from team if present (matches bulk button behavior — frees the slot)
+  const isShiny = slotKey.endsWith('_shiny');
+  const beforeLen = currentTeam.length;
+  currentTeam = currentTeam.filter(e => !(e.id === pokemonId && !!e.shiny === isShiny));
+  if (currentTeam.length !== beforeLen) {
+    await saveTeam(currentTeam);
+  }
+
+  renderTeam();
+  renderCenter();
+  // Re-render the modal button block so it updates to "At Pokémon Center"
+  const card = KANTO_CARDS.find(c => c.id === pokemonId);
+  if (card) renderModalTeamAction(card);
 }
 
 async function addToTeamFromModal(id, shiny) {
@@ -3739,7 +3813,7 @@ async function openModal(card) {
       const color = health.currentHP / health.maxHP < 0.25 ? '#ee2222'
                   : health.currentHP / health.maxHP < 0.5 ? '#ffcc22' : '#4ecb4e';
       hpLabel = `<span class="val" style="color:${color};">${health.currentHP}/${health.maxHP}</span>`;
-      if (health.status) hpLabel += ` <span class="status-badge ${health.status}" style="position:static;margin-left:4px">${health.status.slice(0,3).toUpperCase()}</span>`;
+      if (health.status) hpLabel += ` <span class="status-badge ${health.status}" style="position:static;margin-left:4px" title="${escapeHtml(health.status)}">${statusLabel(health.status)}</span>`;
     } else {
       // Fully healthy — show max HP simply
       hpLabel = `<span class="val">${health.maxHP}</span>`;
