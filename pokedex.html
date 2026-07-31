@@ -1716,8 +1716,16 @@
   /* "Add to team" / "Remove from team" button inside the Pokémon detail modal */
   .modal-team-action {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
     margin: 16px 0 4px;
+  }
+  .modal-team-action > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
   }
   .modal-team-action:empty { display: none; }
   .modal-team-action button {
@@ -2190,8 +2198,25 @@ let pickingSlotIndex = -1; // index being edited in the picker modal
      damagedAt     — timestamp of last damage (for natural regen)
      centerUntil   — timestamp when Center finishes (null = not at Center)
    ============================================================ */
-const NATURAL_HEAL_MS = 30 * 60 * 1000;   // 30 min from damage to fully healed
-const CENTER_HEAL_MS  = 10 * 60 * 1000;   // 10 min at Pokémon Center
+// Heal-rate constants — a FULL heal from KO (0/max HP) uses the full time.
+// Partial damage heals proportionally: a Pokémon at 17/20 HP takes 15% of the
+// max time to heal (natural: 4.5 min, Center: 1.5 min).
+// Rationale: it'd feel silly to wait 10 min at the Center to heal 3 HP.
+const MAX_NATURAL_HEAL_MS = 30 * 60 * 1000;   // 30 min for a full KO → full heal naturally
+const MAX_CENTER_HEAL_MS  = 10 * 60 * 1000;   // 10 min for a full KO → full heal at Center
+const MIN_HEAL_MS         =      60 * 1000;   // floor: 1 min minimum (e.g. status-only, HP full)
+
+// How long a Pokémon takes to fully heal, scaled by how damaged it is + status.
+// Status-only (HP full but poisoned) still uses MIN_HEAL_MS so the treatment
+// takes time — a status wasn't inflicted for free.
+function computeHealTime(currentHP, maxHP, status, maxDuration) {
+  const missing = Math.max(0, maxHP - currentHP);
+  const damagePct = maxHP > 0 ? missing / maxHP : 0;
+  const scaled = damagePct * maxDuration;
+  // Floor: if any damage or status, take at least MIN_HEAL_MS
+  const anyIssue = missing > 0 || !!status;
+  return anyIssue ? Math.max(MIN_HEAL_MS, scaled) : 0;
+}
 
 // Compute a Pokémon's max HP using the Gen 1 formula, per its level.
 // Falls back to a decorative HP if battle-data isn't loaded.
@@ -2213,14 +2238,17 @@ function computeHealthState(entry) {
   const maxHP = computeMaxHP(entry.id, level);
   const now = Date.now();
 
-  // At Pokémon Center — clock ticking toward centerUntil
+  // At Pokémon Center — the total heal time was computed and baked into
+  // centerUntil at send-in time (based on damage %). Just read the elapsed %.
   if (entry.centerUntil && entry.centerUntil > now) {
-    // Compute progress: (elapsed / total-center-time) * (maxHP - damagedHP)
-    const centerStart = entry.centerUntil - CENTER_HEAL_MS;
+    // Need to derive centerStart: for that we need the total scheduled duration.
+    // Recompute from the entry's damagedHP (currentHP field, frozen at send-in).
+    const damagedHP = (entry.currentHP != null) ? entry.currentHP : 0;
+    const totalCenterMs = computeHealTime(damagedHP, maxHP, entry.status, MAX_CENTER_HEAL_MS);
+    const centerStart = entry.centerUntil - totalCenterMs;
     const elapsed = now - centerStart;
-    const pct = Math.max(0, Math.min(1, elapsed / CENTER_HEAL_MS));
-    const from = (entry.currentHP != null) ? entry.currentHP : 0;
-    const current = Math.round(from + (maxHP - from) * pct);
+    const pct = Math.max(0, Math.min(1, elapsed / (totalCenterMs || 1)));
+    const current = Math.round(damagedHP + (maxHP - damagedHP) * pct);
     return {
       currentHP: current,
       maxHP,
@@ -2235,22 +2263,23 @@ function computeHealthState(entry) {
     return { currentHP: maxHP, maxHP, status: null, atCenter: false, healPct: 1, secondsRemaining: 0 };
   }
 
-  // Natural healing
+  // Natural healing — proportional to damage
   if (entry.damagedAt) {
+    const damagedHP = (entry.currentHP != null) ? entry.currentHP : 0;
+    const totalNaturalMs = computeHealTime(damagedHP, maxHP, entry.status, MAX_NATURAL_HEAL_MS);
     const elapsed = now - entry.damagedAt;
-    if (elapsed >= NATURAL_HEAL_MS) {
+    if (totalNaturalMs === 0 || elapsed >= totalNaturalMs) {
       return { currentHP: maxHP, maxHP, status: null, atCenter: false, healPct: 1, secondsRemaining: 0 };
     }
-    const pct = elapsed / NATURAL_HEAL_MS;
-    const from = (entry.currentHP != null) ? entry.currentHP : 0;
-    const current = Math.round(from + (maxHP - from) * pct);
+    const pct = elapsed / totalNaturalMs;
+    const current = Math.round(damagedHP + (maxHP - damagedHP) * pct);
     return {
       currentHP: current,
       maxHP,
       status: entry.status || null,
       atCenter: false,
       healPct: pct,
-      secondsRemaining: Math.ceil((NATURAL_HEAL_MS - elapsed) / 1000),
+      secondsRemaining: Math.ceil((totalNaturalMs - elapsed) / 1000),
     };
   }
 
@@ -2291,15 +2320,19 @@ async function sendWoundedToCenter() {
     alert('No wounded Pokémon on your team — everyone is healthy.');
     return;
   }
-  if (!confirm(`Send ${woundedSlotsAndIndices.length} wounded Pokémon to the Pokémon Center? They'll be ready in 10 minutes. Their team slots will be freed up for substitutes.`)) return;
+  if (!confirm(`Send ${woundedSlotsAndIndices.length} wounded Pokémon to the Pokémon Center? Their team slots will be freed up for substitutes. Time varies by damage — worst case 10 minutes for a fully-KO'd Pokémon.`)) return;
 
-  const centerUntil = Date.now() + CENTER_HEAL_MS;
+  const now = Date.now();
   for (const { slotKey } of woundedSlotsAndIndices) {
     const cur = collection[slotKey] || {};
     const level = cur.level || 5;
     // Compute current effective HP (natural regen might have healed a bit since damagedAt)
-    // and freeze that as the starting point for Center's 10-min heal.
+    // and freeze that as the starting point for Center healing.
     const health = computeHealthState({ ...cur, level });
+    const maxHP = health.maxHP;
+    // Proportional heal time — 10 min for full KO, less for lighter damage
+    const centerMs = computeHealTime(health.currentHP, maxHP, health.status, MAX_CENTER_HEAL_MS);
+    const centerUntil = now + centerMs;
     await writeCollectionFields(slotKey, { currentHP: health.currentHP, centerUntil });
     collection[slotKey] = { ...cur, currentHP: health.currentHP, centerUntil };
   }
@@ -2995,15 +3028,20 @@ function renderModalTeamAction(card) {
   // Center action block — shown below team action if wounded and not already at Center
   let centerBlock = '';
   if (canSendToCenter) {
+    // Show the actual heal time for THIS specific Pokémon (scales with damage).
+    const centerMs   = computeHealTime(health.currentHP, health.maxHP, health.status, MAX_CENTER_HEAL_MS);
+    const naturalMs  = computeHealTime(health.currentHP, health.maxHP, health.status, MAX_NATURAL_HEAL_MS);
+    const centerTxt  = formatHealTime(Math.ceil(centerMs / 1000));
+    const naturalTxt = formatHealTime(Math.ceil(naturalMs / 1000));
     centerBlock = `
       <button class="center-modal-btn" onclick="sendSingleToCenter('${slotKey}', ${card.id})">
         🏥 Send to Pokémon Center
       </button>
-      <div class="ta-hint">Heal fully in 10 minutes (vs 30 min natural). If on your team, this will also remove ${escapeHtml(card.name)}${label} from the team.</div>
+      <div class="ta-hint">Heal fully in ${centerTxt} (vs ${naturalTxt} natural). If on your team, ${escapeHtml(card.name)}${label} will also be removed from the team.</div>
     `;
   }
 
-  el.innerHTML = `<div>${teamBlock}</div>${centerBlock ? `<div style="margin-top:14px">${centerBlock}</div>` : ''}`;
+  el.innerHTML = `<div>${teamBlock}</div>${centerBlock ? `<div>${centerBlock}</div>` : ''}`;
 }
 
 // Send a single Pokémon to the Pokémon Center from the modal. Also removes
@@ -3018,8 +3056,9 @@ async function sendSingleToCenter(slotKey, pokemonId) {
     alert('This Pokémon is fully healthy — nothing to heal.');
     return;
   }
-  const centerUntil = Date.now() + CENTER_HEAL_MS;
-  // Freeze current HP as the starting point, then Center brings it to full over 10 min
+  // Proportional heal time — 10 min for full KO, less for lighter damage
+  const centerMs = computeHealTime(health.currentHP, health.maxHP, health.status, MAX_CENTER_HEAL_MS);
+  const centerUntil = Date.now() + centerMs;
   await writeCollectionFields(slotKey, { currentHP: health.currentHP, centerUntil });
   collection[slotKey] = { ...cur, currentHP: health.currentHP, centerUntil };
 
