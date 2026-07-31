@@ -620,9 +620,13 @@ function simulateBattle(team1, team2, opts = {}) {
       // KO check
       if (defender.currentHP <= 0) {
         log.push({ type: 'ko', slot: defender.slot });
-        // Try to switch in next Pokémon for the KO'd side
+        // Try to switch in next Pokémon for the KO'd side.
+        // Search ALL healthy teammates (not just index > active) — earlier
+        // versions used `i > active` which lost teammates at lower indices
+        // whenever a voluntary switch had happened. Real battles could end
+        // "team-defeat" with 2-3 healthy Pokémon still on the bench.
         const koTeam = 1 - idx;
-        const next = teams[koTeam].findIndex((p, i) => i > active[koTeam] && p.currentHP > 0);
+        const next = teams[koTeam].findIndex((p, i) => i !== active[koTeam] && p.currentHP > 0);
         if (next === -1) {
           // No more Pokémon — this team loses
           log.push({ type: 'team-defeat', teamIdx: koTeam });
@@ -644,7 +648,9 @@ function simulateBattle(team1, team2, opts = {}) {
       const p = teams[idx][active[idx]];
       if (p.currentHP <= 0) {
         log.push({ type: 'ko', slot: p.slot });
-        const next = teams[idx].findIndex((tp, i) => i > active[idx] && tp.currentHP > 0);
+        // Same fix as the KO branch above — search ALL healthy teammates,
+        // not just index > active, so voluntary switches don't strand teammates.
+        const next = teams[idx].findIndex((tp, i) => i !== active[idx] && tp.currentHP > 0);
         if (next === -1) {
           log.push({ type: 'team-defeat', teamIdx: idx });
           const winner = 1 - idx;
