@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Pokémon Battle Overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ============================================================
+     BATTLE OVERLAY — separate from overlay.html by design.
+     Positioned in OBS as its own browser source. Fully self-contained.
+     ============================================================ */
+  html, body {
+    margin: 0; padding: 0;
+    width: 100vw; height: 100vh;
+    background: transparent;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    color: white;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  :root {
+    --gold: #ffcb05;
+    --gold-dim: #d4a80f;
+    --navy: #0b1a3a;
+    --navy-dark: #061029;
+    --red: #ee2222;
+    --green: #4ecb4e;
+    --yellow: #ffcc22;
+    --blue: #3badd8;
+  }
+
+  /* Root stage container — everything battle-related renders inside this */
+  #stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: none;   /* Hidden until a battle is active */
+  }
+  #stage.active { display: block; }
+
+  /* Central arena — occupies middle portion of screen for the actual combat */
+  #arena {
+    position: absolute;
+    left: 3%; right: 3%;
+    top: 8%; bottom: 22%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+    justify-items: center;
+  }
+
+  /* Each combatant panel — HP plate on top, sprite below. Simple flex column. */
+  .combatant {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    height: 100%;
+  }
+
+  .sprite-wrap {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .3s ease, opacity .5s ease;
+    flex-shrink: 0;
+  }
+  .combatant.right .sprite-wrap img {
+    transform: scaleX(-1);   /* Opponent faces the player */
+  }
+  .sprite-wrap img {
+    max-width: 100%;
+    max-height: 100%;
+    image-rendering: -webkit-optimize-contrast;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,.6));
+  }
+
+  /* Send-in / send-out animations */
+  .sprite-wrap.enter-left  { animation: enterFromLeft  .6s ease-out; }
+  .sprite-wrap.enter-right { animation: enterFromRight .6s ease-out; }
+  .sprite-wrap.exit-left   { animation: exitLeft  .5s ease-in forwards; }
+  .sprite-wrap.exit-right  { animation: exitRight .5s ease-in forwards; }
+  .sprite-wrap.hit         { animation: shake .35s ease-in-out; }
+  .sprite-wrap.attack-left { animation: lungeRight .45s ease-out; }
+  .sprite-wrap.attack-right{ animation: lungeLeft  .45s ease-out; }
+  .sprite-wrap.ko          { animation: koFall 1.2s ease-in forwards; }
+
+  @keyframes enterFromLeft  { from { transform: translateX(-300px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes enterFromRight { from { transform: translateX( 300px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes exitLeft       { to   { transform: translateX(-300px); opacity: 0; } }
+  @keyframes exitRight      { to   { transform: translateX( 300px); opacity: 0; } }
+  @keyframes shake          { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-14px)} 40%{transform:translateX(14px)} 60%{transform:translateX(-10px)} 80%{transform:translateX(8px)} }
+  @keyframes lungeRight     { 0%,100%{transform:translateX(0)} 50%{transform:translateX(60px) scale(1.05)} }
+  @keyframes lungeLeft      { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-60px) scale(1.05)} }
+  @keyframes koFall         { 0%{transform:none;opacity:1} 60%{transform:translateY(80px) rotate(20deg);opacity:.7} 100%{transform:translateY(160px) rotate(90deg);opacity:0} }
+
+  /* Shiny shimmer overlay — persistent gold sparkle for shiny Pokémon on field */
+  .sprite-wrap.shiny::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255,215,0,.35) 0%, transparent 45%),
+                radial-gradient(circle at 70% 60%, rgba(255,215,0,.25) 0%, transparent 45%);
+    animation: shinyShimmer 2s ease-in-out infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  @keyframes shinyShimmer { 0%,100% { opacity: .4 } 50% { opacity: .9 } }
+
+  /* Hit flash — briefly white on damage */
+  .sprite-wrap.flash {
+    filter: brightness(2.5) saturate(0);
+    transition: filter .12s;
+  }
+
+  /* HP + name plate — pixel-y Gen 1 style, sits above the sprite in the flex column */
+  .hp-plate {
+    background: rgba(255,255,255,.95);
+    border: 3px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 10px 16px;
+    color: #2a2a2a;
+    width: 320px;
+    max-width: 90%;
+    box-shadow: 4px 4px 0 rgba(0,0,0,.6);
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    flex-shrink: 0;
+  }
+
+  .hp-plate .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .hp-plate .name {
+    font-size: 18px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .hp-plate .name.shiny  { color: #b8860b; }
+  .hp-plate .level {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .hp-plate .hp-label {
+    font-size: 10px;
+    font-weight: 900;
+    color: #d4a80f;
+    letter-spacing: 1px;
+    margin-right: 6px;
+  }
+  .hp-plate .hp-bar-row {
+    display: flex;
+    align-items: center;
+  }
+  .hp-plate .hp-bar-outer {
+    flex: 1;
+    height: 10px;
+    background: #2a2a2a;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #1a1a1a;
+  }
+  .hp-plate .hp-bar-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width .6s ease-out, background .3s;
+    border-radius: 4px;
+  }
+  .hp-plate.hp-mid .hp-bar-fill { background: var(--yellow); }
+  .hp-plate.hp-low .hp-bar-fill { background: var(--red); }
+  .hp-plate .hp-numeric {
+    text-align: right;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* Status badge on the HP plate — mirrors pokedex style */
+  .hp-plate .status-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+    letter-spacing: .5px;
+    margin-left: 4px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.5);
+    vertical-align: middle;
+  }
+  .status-badge.poison    { background: #a040a0; }
+  .status-badge.burn      { background: #ff6a1a; }
+  .status-badge.paralysis { background: #d4a83b; color: #000; text-shadow: none; }
+  .status-badge.sleep     { background: #6a6a6a; }
+  .status-badge.freeze    { background: #3badd8; }
+  .status-badge.confusion { background: #b06090; }
+
+  /* Move announcement box — bottom of screen, Pokemon-style dialog */
+  #dialog {
+    position: absolute;
+    left: 5%; right: 5%;
+    bottom: 3%;
+    height: 12%;
+    background: linear-gradient(180deg, #f8f8f8 0%, #dcdcdc 100%);
+    border: 4px solid #1a1a1a;
+    border-radius: 12px;
+    padding: 18px 24px;
+    color: #1a1a1a;
+    font-size: 26px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    letter-spacing: .3px;
+    box-shadow: 6px 6px 0 rgba(0,0,0,.5);
+  }
+
+  /* Effectiveness / crit callout — appears briefly above the affected sprite */
+  .callout {
+    position: absolute;
+    font-weight: 900;
+    font-size: 34px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: white;
+    text-shadow: 0 3px 10px rgba(0,0,0,.9), 0 0 20px currentColor;
+    animation: calloutPop .9s ease-out forwards;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .callout.crit   { color: #ffcb05; }
+  .callout.super  { color: #ff6b6b; }
+  .callout.weak   { color: #6bbfff; }
+  .callout.miss   { color: #cccccc; }
+  @keyframes calloutPop {
+    0%   { transform: translateY(20px) scale(.6); opacity: 0; }
+    20%  { transform: translateY(0)    scale(1.1); opacity: 1; }
+    80%  { transform: translateY(-8px) scale(1);   opacity: 1; }
+    100% { transform: translateY(-40px) scale(.95); opacity: 0; }
+  }
+
+  /* Damage number floater — quick red number above the sprite */
+  .dmg-num {
+    position: absolute;
+    font-weight: 900;
+    font-size: 40px;
+    color: #ff5555;
+    text-shadow: 0 3px 8px rgba(0,0,0,.9);
+    animation: dmgFloat 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 15;
+  }
+  @keyframes dmgFloat {
+    0%   { transform: translateY(0)    scale(.6); opacity: 0; }
+    30%  { transform: translateY(-20px) scale(1.2); opacity: 1; }
+    100% { transform: translateY(-70px) scale(1);   opacity: 0; }
+  }
+
+  /* Battle-start banner */
+  #intro-banner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.75);
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .4s;
+  }
+  #intro-banner.show { opacity: 1; }
+  #intro-banner .box {
+    background: linear-gradient(180deg, var(--navy) 0%, var(--navy-dark) 100%);
+    border: 4px solid var(--gold);
+    border-radius: 20px;
+    padding: 40px 60px;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0,0,0,.8);
+    animation: bannerPop .5s ease-out;
+  }
+  #intro-banner .title {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  #intro-banner .subtitle {
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+    opacity: .9;
+  }
+  #intro-banner .vs {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--red);
+    margin: 8px 0;
+    text-shadow: 0 0 20px rgba(238,34,34,.8);
+  }
+  @keyframes bannerPop {
+    0%   { transform: scale(.7); opacity: 0; }
+    100% { transform: scale(1);  opacity: 1; }
+  }
+
+  /* Winner celebration — takes over the screen at battle end */
+  #winner-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .5s;
+    background: radial-gradient(ellipse at center, rgba(255,203,5,.35) 0%, rgba(0,0,0,.9) 60%);
+  }
+  #winner-screen.show { opacity: 1; }
+  #winner-screen .content {
+    text-align: center;
+    animation: winnerPop 1s ease-out;
+  }
+  #winner-screen .crown { font-size: 72px; margin-bottom: 10px; }
+  #winner-screen .who {
+    font-size: 52px;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-shadow: 0 4px 20px rgba(0,0,0,.8), 0 0 40px rgba(255,203,5,.6);
+    margin-bottom: 10px;
+  }
+  #winner-screen .msg {
+    font-size: 24px;
+    color: white;
+    font-weight: 700;
+    opacity: .9;
+  }
+  @keyframes winnerPop {
+    0%   { transform: scale(.5) rotate(-8deg); opacity: 0; }
+    100% { transform: scale(1)  rotate(0);      opacity: 1; }
+  }
+
+  /* Debug status — only shown when battle isn't active, so streamers know overlay loaded */
+  #idle {
+    position: absolute;
+    top: 20px; left: 20px;
+    background: rgba(0,0,0,.55);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    opacity: .5;
+    color: white;
+    z-index: 5;
+  }
+  #idle.hidden { display: none; }
+</style>
+</head>
+
+<body>
+
+<div id="stage">
+  <div id="arena">
+    <div class="combatant left" id="c-left">
+      <div class="sprite-wrap" id="sprite-left">
+        <img id="img-left" alt="" />
+      </div>
+      <div class="hp-plate" id="plate-left">
+        <div class="top-row">
+          <span class="name" id="name-left">—</span>
+          <span class="level" id="level-left">Lv —</span>
+        </div>
+        <div class="hp-bar-row">
+          <span class="hp-label">HP</span>
+          <div class="hp-bar-outer"><div class="hp-bar-fill" id="hp-fill-left" style="width:100%"></div></div>
+        </div>
+        <div class="hp-numeric" id="hp-num-left">0/0</div>
+      </div>
+    </div>
+    <div class="combatant right" id="c-right">
+      <div class="sprite-wrap" id="sprite-right">
+        <img id="img-right" alt="" />
+      </div>
+      <div class="hp-plate" id="plate-right">
+        <div class="top-row">
+          <span class="name" id="name-right">—</span>
+          <span class="level" id="level-right">Lv —</span>
+        </div>
+        <div class="hp-bar-row">
+          <span class="hp-label">HP</span>
+          <div class="hp-bar-outer"><div class="hp-bar-fill" id="hp-fill-right" style="width:100%"></div></div>
+        </div>
+        <div class="hp-numeric" id="hp-num-right">0/0</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="dialog">Waiting…</div>
+</div>
+
+<div id="intro-banner">
+  <div class="box">
+    <div class="title" id="intro-title">Battle</div>
+    <div class="vs">VS</div>
+    <div class="subtitle" id="intro-subtitle">—</div>
+  </div>
+</div>
+
+<div id="winner-screen">
+  <div class="content">
+    <div class="crown">👑</div>
+    <div class="who" id="winner-who">—</div>
+    <div class="msg" id="winner-msg">is the winner!</div>
+  </div>
+</div>
+
+<div id="idle">battle overlay ready — waiting for /active_battle</div>
+
+<script src="cards.js"></script>
+<script src="config.js"></script>
+<script src="battle-data.js"></script>
+<script src="battle-engine.js"></script>
+
+<script>
+'use strict';
+
+/* ============================================================
+   BATTLE OVERLAY runtime.
+
+   Two entry points:
+   1. Firebase watcher: listens to /active_battle, when a battle is
+      posted it fetches the two teams and plays out the log.
+   2. Devtools test: window.runTestBattle(team1, team2) — build the
+      teams inline and run without needing Firebase or Streamer.bot.
+   ============================================================ */
+
+const cfg = window.STREAM_CONFIG || {};
+
+// Sprite URL — reuses cards.js so we stay consistent with pack/dex overlays
+function spriteFor(id, shiny) {
+  const sprites = cardSprites(id);
+  return shiny ? sprites.shiny : sprites.standard;
+}
+
+// Timing per event type (ms). Tweak these to speed up or slow down the pacing.
+// Bumped again — chat needs real time to read move announcements and status
+// effects. A 30-turn battle takes ~2-3 min at these values, which feels
+// closer to the pacing of a stream moment (viewers stop what they're doing
+// to watch a battle, don't scroll past it).
+const TIMING = {
+  battleStart:     2000,   // intro banner hold — read the matchup
+  sendOut:         2000,   // "Trainer sent out X!"
+  turnMarker:      200,
+  moveDeclare:     2200,   // "X used FLAMETHROWER!" — must be readable
+  damageAnim:      1800,   // hit flash + HP bar tick — feel the hit
+  statusAnim:      2200,   // "X was paralyzed!" — critical info, must not miss
+  koAnim:          2500,   // KO fall + "X fainted!" — big moment
+  switchOut:       2200,   // total for exit + entrance (split evenly)
+  betweenTurns:    800,    // breather between events
+  winnerHold:      8000,   // winner screen with crown + victory music
+};
+
+// Track live per-side state during playback so HP bars update smoothly
+const live = {
+  teams: [null, null],       // full teams from the engine's teams[] output
+  active: [0, 0],            // current active index per side
+  hp: [0, 0],                // current HP per side (for smooth bar updates)
+  maxHp: [0, 0],             // max HP per side
+  name: ['', ''],
+  isShiny: [false, false],
+  trainer: ['Player 1', 'Player 2'],   // trainer usernames (fallback if not provided)
+};
+
+// Audio — theme loops during, victory plays on end
+let audioTheme = null;
+let audioVictory = null;
+function loadAudio() {
+  if (!audioTheme) {
+    audioTheme = new Audio('battle-theme.mp3');
+    audioTheme.loop = true;
+    audioTheme.volume = 0.5;
+  }
+  if (!audioVictory) {
+    audioVictory = new Audio('battle-victory.mp3');
+    audioVictory.loop = false;
+    audioVictory.volume = 0.7;
+  }
+}
+function playTheme() {
+  loadAudio();
+  audioTheme.currentTime = 0;
+  audioTheme.play().catch(() => {});
+}
+function stopTheme() {
+  if (audioTheme) {
+    try { audioTheme.pause(); audioTheme.currentTime = 0; } catch (e) {}
+  }
+}
+function playVictory() {
+  loadAudio();
+  audioVictory.currentTime = 0;
+  audioVictory.play().catch(() => {});
+}
+function stopVictory() {
+  if (audioVictory) {
+    try { audioVictory.pause(); audioVictory.currentTime = 0; } catch (e) {}
+  }
+}
+// Nuke both — safety net for cleanup
+function stopAllAudio() { stopTheme(); stopVictory(); }
+
+// Helpers
+const $ = id => document.getElementById(id);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// Resolve the display name for a Pokémon — engine gives back "#6" if no nickname
+// was passed, so fall back to the canonical Kanto name from cards.js
+function displayName(pokemon) {
+  if (pokemon.name && !/^#\d+$/.test(pokemon.name)) return pokemon.name;
+  const card = (typeof KANTO_CARDS !== 'undefined') ? KANTO_CARDS.find(c => c.id === pokemon.id) : null;
+  return (card && card.name) || pokemon.name || 'Unknown';
+}
+
+// Set sprite + HP plate for a given side (0=left, 1=right) from a Pokémon object
+function setSide(side, pokemon) {
+  const S = side === 0 ? 'left' : 'right';
+  const name = displayName(pokemon);
+  // Mutate the engine object so subsequent references in the log see the good name too
+  pokemon.name = name;
+  console.log(`[setSide] side=${side} name=${name} currentHP=${pokemon.currentHP} stats.hp=${pokemon.stats && pokemon.stats.hp} slot=${pokemon.slot}`);
+  live.hp[side]     = pokemon.currentHP;
+  live.maxHp[side]  = pokemon.stats.hp;
+  live.name[side]   = name;
+  live.isShiny[side] = !!pokemon.isShiny;
+
+  $(`img-${S}`).src = spriteFor(pokemon.id, pokemon.isShiny);
+  $(`img-${S}`).alt = name;
+  $(`name-${S}`).textContent = name;
+  $(`name-${S}`).classList.toggle('shiny', !!pokemon.isShiny);
+  $(`level-${S}`).textContent = `Lv ${pokemon.level}`;
+  updateHP(side, pokemon.currentHP);
+  setStatusBadge(side, pokemon.status);
+  $(`sprite-${S}`).classList.toggle('shiny', !!pokemon.isShiny);
+}
+
+function updateHP(side, newHP) {
+  const S = side === 0 ? 'left' : 'right';
+  const max = live.maxHp[side];
+  const clamped = Math.max(0, Math.min(newHP, max));
+  live.hp[side] = clamped;
+  const pct = max > 0 ? (clamped / max) * 100 : 0;
+  const plate = $(`plate-${S}`);
+  plate.classList.toggle('hp-mid', pct <= 50 && pct > 25);
+  plate.classList.toggle('hp-low', pct <= 25);
+  $(`hp-fill-${S}`).style.width = pct.toFixed(1) + '%';
+  $(`hp-num-${S}`).textContent = `${clamped}/${max}`;
+  console.log(`[updateHP] side=${side} newHP=${newHP} max=${max} clamped=${clamped} pct=${pct}%`);
+}
+
+function setStatusBadge(side, status) {
+  const S = side === 0 ? 'left' : 'right';
+  const plate = $(`plate-${S}`);
+  // Remove any existing badge
+  const existing = plate.querySelector('.status-badge');
+  if (existing) existing.remove();
+  if (!status) return;
+  const label = { poison:'PSN', burn:'BRN', paralysis:'PAR', sleep:'SLP', freeze:'FRZ', confusion:'CNF' }[status] || status.slice(0,3).toUpperCase();
+  const el = document.createElement('span');
+  el.className = 'status-badge ' + status;
+  el.textContent = label;
+  plate.querySelector('.top-row').appendChild(el);
+}
+
+function say(text) {
+  $('dialog').textContent = text;
+}
+
+// Locate a Pokémon by its slot id "teamIdx:pokemonIdx" — engine uses these as stable identifiers
+function findBySlot(slot) {
+  for (let t = 0; t < 2; t++) {
+    if (!live.teams[t]) continue;
+    for (const p of live.teams[t]) {
+      if (p.slot === slot) return { pokemon: p, side: t };
+    }
+  }
+  return null;
+}
+
+// Which side is currently active for a given slot? (differs from findBySlot when a Pokémon
+// was on-field earlier but got switched out)
+function sideOfActiveSlot(slot) {
+  for (let t = 0; t < 2; t++) {
+    if (!live.teams[t]) continue;
+    const active = live.teams[t][live.active[t]];
+    if (active && active.slot === slot) return t;
+  }
+  return -1;
+}
+
+// Show a floating callout above one of the combatant sprites
+function floatCallout(side, text, cls) {
+  const wrap = $(`sprite-${side === 0 ? 'left' : 'right'}`);
+  const el = document.createElement('div');
+  el.className = 'callout ' + (cls || '');
+  el.textContent = text;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 900);
+}
+
+function floatDamage(side, amount) {
+  const wrap = $(`sprite-${side === 0 ? 'left' : 'right'}`);
+  const el = document.createElement('div');
+  el.className = 'dmg-num';
+  el.textContent = '−' + amount;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+function briefFlash(side) {
+  const wrap = $(`sprite-${side === 0 ? 'left' : 'right'}`);
+  wrap.classList.add('flash');
+  setTimeout(() => wrap.classList.remove('flash'), 120);
+}
+
+function shake(side) {
+  const wrap = $(`sprite-${side === 0 ? 'left' : 'right'}`);
+  wrap.classList.remove('hit');
+  void wrap.offsetWidth;   // force reflow so animation re-runs
+  wrap.classList.add('hit');
+  setTimeout(() => wrap.classList.remove('hit'), 400);
+}
+
+function lunge(attackerSide) {
+  const wrap = $(`sprite-${attackerSide === 0 ? 'left' : 'right'}`);
+  const cls  = attackerSide === 0 ? 'attack-left' : 'attack-right';
+  wrap.classList.remove(cls);
+  void wrap.offsetWidth;
+  wrap.classList.add(cls);
+  setTimeout(() => wrap.classList.remove(cls), 500);
+}
+
+/* ============================================================
+   LOG PLAYBACK — the main animation loop
+   ============================================================ */
+async function playLog(result, opts = {}) {
+  const log = result.log;
+  live.teams = result.teams;
+  live.active = [0, 0];
+  live.trainer[0] = opts.trainer1 || 'Player 1';
+  live.trainer[1] = opts.trainer2 || 'Player 2';
+
+  // Snapshot the ACTUAL final battle state per Pokémon BEFORE the reset below.
+  // Writeback uses this snapshot — reading p.currentHP directly after the
+  // reset would give max HP for everyone (wrong). Stash on result so the
+  // battle-end handler can access it when it calls writeBattleResults.
+  result._finalStates = live.teams.map(team => team.map(p => ({
+    currentHP: p.currentHP,
+    status: p.status,
+  })));
+
+  // CRITICAL: reset every Pokémon back to full HP + clear status before playback.
+  // The engine mutates these objects during simulation, so by the time we start
+  // animating, they reflect the FINAL state (KO'd = 0 HP, poisoned, etc.).
+  // The log events (damage, status, KO) will re-apply everything correctly
+  // as they play back. Without this reset, the initial send-out displays
+  // Pokémon at their end-of-battle state.
+  for (const team of live.teams) {
+    for (const p of team) {
+      p.currentHP = p.stats.hp;
+      p.status = 'none';
+      p.sleepTurns = 0;
+      // Also restore full PP on each move
+      for (const m of p.moveset) m.pp = m.maxPp;
+    }
+  }
+
+  // Hide the idle "waiting" text
+  $('idle').classList.add('hidden');
+
+  // Battle-start banner — TRAINER names take top billing, Pokémon names as subtitle
+  const p1PokeName = displayName(result.teams[0][0]);
+  const p2PokeName = displayName(result.teams[1][0]);
+  showIntro(live.trainer[0], live.trainer[1], p1PokeName, p2PokeName);
+  playTheme();
+  await wait(TIMING.battleStart);
+  hideIntro();
+
+  $('stage').classList.add('active');
+
+  for (let i = 0; i < log.length; i++) {
+    const e = log[i];
+
+    switch (e.type) {
+      case 'battle-start':
+        // Handled by showIntro above; nothing more to do here
+        break;
+
+      case 'send-out': {
+        const side = e.teamIdx;
+        // Find the Pokémon that matches this slot
+        const p = live.teams[side].find(x => x.slot === e.slot);
+        if (!p) break;
+        // Update the active index
+        const idx = live.teams[side].indexOf(p);
+        if (idx >= 0) live.active[side] = idx;
+        const spriteWrap = $(`sprite-${side === 0 ? 'left' : 'right'}`);
+        // Full class + inline style reset so an earlier KO-fall or exit doesn't stick
+        spriteWrap.classList.remove('enter-left', 'enter-right', 'exit-left', 'exit-right', 'ko');
+        spriteWrap.style.transform = '';
+        spriteWrap.style.opacity = '';
+        void spriteWrap.offsetWidth;
+        setSide(side, p);
+        void spriteWrap.offsetWidth;
+        spriteWrap.classList.add(side === 0 ? 'enter-left' : 'enter-right');
+        say(`${live.trainer[side]} sent out ${displayName(p)}${p.isShiny ? ' ⭐' : ''}!`);
+        await wait(TIMING.sendOut);
+        break;
+      }
+
+      case 'switch-out': {
+        const side = e.teamIdx;
+        const spriteWrap = $(`sprite-${side === 0 ? 'left' : 'right'}`);
+        // Clear any lingering animation classes before starting exit
+        spriteWrap.classList.remove('enter-left', 'enter-right', 'exit-left', 'exit-right');
+        void spriteWrap.offsetWidth;
+        spriteWrap.classList.add(side === 0 ? 'exit-left' : 'exit-right');
+        say(`${live.name[side]}, come back!`);
+        await wait(TIMING.switchOut / 2);
+        // Now bring in the new Pokémon
+        const p = live.teams[side].find(x => x.slot === e.inSlot);
+        if (p) {
+          const idx = live.teams[side].indexOf(p);
+          if (idx >= 0) live.active[side] = idx;
+          // Full class reset + explicit style clear to override the exit-forwards state,
+          // then reflow, then apply enter animation. This ensures the sprite actually re-enters.
+          spriteWrap.classList.remove('exit-left', 'exit-right', 'enter-left', 'enter-right');
+          spriteWrap.style.transform = '';
+          spriteWrap.style.opacity = '';
+          void spriteWrap.offsetWidth;
+          setSide(side, p);
+          void spriteWrap.offsetWidth;
+          spriteWrap.classList.add(side === 0 ? 'enter-left' : 'enter-right');
+          say(`Go, ${displayName(p)}${p.isShiny ? ' ⭐' : ''}!`);
+        }
+        await wait(TIMING.switchOut / 2);
+        break;
+      }
+
+      case 'turn':
+        // Just a marker in the log; don't announce
+        await wait(TIMING.turnMarker);
+        break;
+
+      case 'move-declare': {
+        const info = findBySlot(e.attacker);
+        if (!info) break;
+        const side = info.side;
+        const moveName = String(e.move).replace(/-/g, ' ');
+        say(`${info.pokemon.name} used ${moveName.toUpperCase()}!`);
+        lunge(side);
+        await wait(TIMING.moveDeclare);
+        break;
+      }
+
+      case 'damage': {
+        const info = findBySlot(e.defender);
+        if (!info) break;
+        const defenderSide = info.side;
+        briefFlash(defenderSide);
+        shake(defenderSide);
+        floatDamage(defenderSide, e.damage);
+        // Effectiveness / crit callouts
+        if (e.crit) floatCallout(defenderSide, 'Critical Hit!', 'crit');
+        else if (e.effectiveness >= 2) floatCallout(defenderSide, 'Super Effective!', 'super');
+        else if (e.effectiveness > 0 && e.effectiveness < 1) floatCallout(defenderSide, 'Not very effective…', 'weak');
+        else if (e.effectiveness === 0) floatCallout(defenderSide, 'No effect…', 'weak');
+        // HP bar tick down
+        updateHP(defenderSide, e.defenderHP);
+        await wait(TIMING.damageAnim);
+        break;
+      }
+
+      case 'miss': {
+        const info = findBySlot(e.attacker);
+        if (info) floatCallout(info.side, 'MISS', 'miss');
+        say(`${info ? info.pokemon.name : 'Attack'} missed!`);
+        await wait(TIMING.damageAnim);
+        break;
+      }
+
+      case 'status': {
+        const info = findBySlot(e.target);
+        if (!info) break;
+        setStatusBadge(info.side, e.status);
+        const label = { poison:'poisoned', burn:'burned', paralysis:'paralyzed', sleep:'fell asleep', freeze:'was frozen', confusion:'became confused' }[e.status] || 'affected';
+        say(`${info.pokemon.name} was ${label}!`);
+        await wait(TIMING.statusAnim);
+        break;
+      }
+
+      case 'status-damage': {
+        const info = findBySlot(e.slot);
+        if (!info) break;
+        briefFlash(info.side);
+        floatDamage(info.side, e.damage);
+        updateHP(info.side, e.currentHP);
+        say(`${info.pokemon.name} was hurt by its ${e.status}!`);
+        await wait(TIMING.damageAnim);
+        break;
+      }
+
+      case 'paralyzed':
+      case 'frozen':
+      case 'sleep': {
+        const info = findBySlot(e.slot);
+        if (!info) break;
+        const msg = e.type === 'paralyzed' ? "is fully paralyzed — can't move!"
+                  : e.type === 'frozen'    ? 'is frozen solid!'
+                  : 'is fast asleep…';
+        say(`${info.pokemon.name} ${msg}`);
+        await wait(TIMING.moveDeclare);
+        break;
+      }
+
+      case 'wakeup': {
+        const info = findBySlot(e.slot);
+        if (!info) break;
+        setStatusBadge(info.side, null);
+        say(`${info.pokemon.name} woke up!`);
+        await wait(TIMING.statusAnim);
+        break;
+      }
+
+      case 'ko': {
+        const info = findBySlot(e.slot);
+        if (!info) break;
+        const spriteWrap = $(`sprite-${info.side === 0 ? 'left' : 'right'}`);
+        spriteWrap.classList.add('ko');
+        say(`${info.pokemon.name} fainted!`);
+        await wait(TIMING.koAnim);
+        break;
+      }
+
+      case 'team-defeat':
+        // Announcement handled by battle-end
+        break;
+
+      case 'battle-end': {
+        stopTheme();
+        const winner = e.winner;
+        if (winner === -1) {
+          say('The battle ended in a draw.');
+        } else {
+          const p = live.teams[winner][live.active[winner]];
+          const trainerName = live.trainer[winner];
+          const pokeName = p ? displayName(p) : '';
+          showWinner(trainerName, pokeName);
+          playVictory();
+          // Persist results to Firebase — HP, status, XP, level-ups, wins/losses
+          // for each participating Pokémon, plus battle_stats for the leaderboard.
+          // Fire-and-forget: don't block the winner screen on the writes.
+          writeBattleResults(result, opts, winner).catch(err =>
+            console.warn('[writeback] failed:', err)
+          );
+        }
+        await wait(TIMING.winnerHold);
+        // Cut the victory jingle at the same time the winner screen fades — the
+        // Gen 1 VS Trainer victory is ~24s long, and we don't want it playing
+        // over normal stream audio after the moment is done.
+        stopVictory();
+        hideWinner();
+        $('stage').classList.remove('active');
+        $('idle').classList.remove('hidden');
+        say('Waiting…');
+        break;
+      }
+
+      default:
+        // Unknown event type — skip silently
+        break;
+    }
+
+    await wait(TIMING.betweenTurns);
+  }
+}
+
+/* ============================================================
+   BATTLE RESULT WRITEBACK — XP, level-ups, HP/status, wins/losses
+   ============================================================
+
+   Called after battle-end. For each Pokémon on both teams:
+     - Calculate XP earned (base + KO bonus + winner multiplier)
+     - Apply level-ups if XP threshold crossed
+     - Auto-learn new moves at level-up if a slot is free
+     - Persist final HP + status to Firebase (feeds healing system)
+     - Increment wins/losses counters
+
+   Also writes /battle_stats/<user> for the leaderboard (Item 7).
+
+   Fires only for real battles (viewer-vs-viewer with actual trainer
+   usernames). Test battles with "Player 1" / "Player 2" skip writeback.
+   ============================================================ */
+
+const MAX_LEVEL = 100;
+
+// XP threshold for reaching a given level (canonical Gen 1-ish curve — gentle
+// early, steep late). Lv 5 = ~566 XP total. Lv 100 = ~700k XP total.
+function xpForLevel(level) {
+  if (level <= 1) return 0;
+  return Math.floor(Math.pow(level - 1, 2.2) * 25);
+}
+
+// Reuse Gen 1 HP formula (same as pokedex.html's computeMaxHP)
+function maxHPForLevel(pokemonId, level) {
+  if (typeof BASE_STATS === 'undefined' || !BASE_STATS[pokemonId]) return 40;
+  const base = BASE_STATS[pokemonId].hp;
+  return Math.floor(((2 * base + 15) * level) / 100) + level + 10;
+}
+
+// Walk the log and derive per-Pokémon participation + KO counts.
+// A Pokémon "participated" if they were sent out at least once.
+// A Pokémon "KO'd" someone if the damage event immediately preceding
+// each 'ko' event listed them as attacker.
+function analyzeBattleParticipation(log) {
+  const stats = {};   // slot → { participated, kos }
+  let lastDamageAttacker = null;
+  for (const e of log) {
+    if (e.type === 'send-out') {
+      if (!stats[e.slot]) stats[e.slot] = { participated: false, kos: 0 };
+      stats[e.slot].participated = true;
+    } else if (e.type === 'damage') {
+      lastDamageAttacker = e.attacker;
+    } else if (e.type === 'ko') {
+      if (lastDamageAttacker) {
+        if (!stats[lastDamageAttacker]) stats[lastDamageAttacker] = { participated: true, kos: 0 };
+        stats[lastDamageAttacker].kos++;
+      }
+      lastDamageAttacker = null;
+    }
+  }
+  return stats;
+}
+
+async function writeBattleResults(result, opts, winnerIdx) {
+  if (!cfg.firebaseUrl) { console.log('[writeback] no firebaseUrl, skipping'); return; }
+  const trainers = [opts.trainer1, opts.trainer2];
+
+  // Skip writeback for test battles (default placeholder trainer names)
+  if (!trainers[0] || trainers[0] === 'Player 1' || !trainers[1] || trainers[1] === 'Player 2') {
+    console.log('[writeback] test battle detected (placeholder trainers) — skipping Firebase writes');
+    return;
+  }
+
+  const participation = analyzeBattleParticipation(result.log);
+  const levelUpMessages = [];
+
+  for (let t = 0; t < 2; t++) {
+    const trainer = trainers[t];
+    const trainerKey = String(trainer).toLowerCase().trim();
+    const isWinner = winnerIdx === t;
+
+    for (let pIdx = 0; pIdx < result.teams[t].length; pIdx++) {
+      const p = result.teams[t][pIdx];
+      // Read the ACTUAL final state we snapshotted before the playback reset.
+      // p.currentHP alone would be max HP after reset — wrong.
+      const finalState = (result._finalStates && result._finalStates[t] && result._finalStates[t][pIdx]) || {};
+      const battleEndHP     = (finalState.currentHP != null) ? finalState.currentHP : p.currentHP;
+      const battleEndStatus = finalState.status || p.status || 'none';
+      const slotKey = p.isShiny ? `${p.id}_shiny` : String(p.id);
+      const url = `${cfg.firebaseUrl.replace(/\/$/, '')}/collections/${encodeURIComponent(trainerKey)}/${encodeURIComponent(slotKey)}.json`;
+
+      // Fetch current collection entry so we can update fields relative to it
+      let current = null;
+      try {
+        const r = await fetch(url, { cache: 'no-store' });
+        if (r.ok) current = await r.json();
+      } catch (e) {
+        console.warn(`[writeback] fetch failed for ${trainerKey}/${slotKey}:`, e);
+        continue;
+      }
+      // Skip writeback if the viewer doesn't actually own this Pokémon.
+      // In production this can't happen (battles require Pokémon on the viewer's
+      // team, which are picked from their collection), but test battles with
+      // arbitrary IDs could otherwise create garbage half-entries.
+      if (!current || typeof current.id !== 'number') {
+        console.log(`[writeback] skipping ${trainerKey}/${slotKey} — not in collection (safety guard)`);
+        continue;
+      }
+
+      // ---- XP calc ----
+      const stats = participation[p.slot] || { participated: false, kos: 0 };
+      let xpGained = 0;
+      if (stats.participated) {
+        xpGained = 10 + (stats.kos * 25);
+        if (isWinner) xpGained = Math.floor(xpGained * 1.5);
+      }
+      const oldXp = current.xp || 0;
+      const oldLevel = current.level || p.level;
+      const newXp = oldXp + xpGained;
+
+      // ---- Level-up loop (may level up multiple times if lots of XP) ----
+      let newLevel = oldLevel;
+      while (newLevel < MAX_LEVEL && newXp >= xpForLevel(newLevel + 1)) newLevel++;
+      const leveledUp = newLevel > oldLevel;
+      if (leveledUp) {
+        levelUpMessages.push(`${trainer}'s ${displayName(p)} → Lv ${newLevel}`);
+        console.log(`[level-up] ${trainer}'s ${displayName(p)} ${oldLevel} → ${newLevel}`);
+      }
+
+      // ---- HP writeback — scale proportionally if leveled up ----
+      const oldMaxHP = maxHPForLevel(p.id, oldLevel);
+      const newMaxHP = maxHPForLevel(p.id, newLevel);
+      // Scale battle HP from the LEVEL THE BATTLE ACTUALLY USED to the viewer's
+      // stored level. In production the two match (battle payload reads stored
+      // level), but test battles can pass hardcoded levels — this handles that.
+      const battleMaxHP = maxHPForLevel(p.id, p.level);
+      const hpRatio = battleMaxHP > 0 ? battleEndHP / battleMaxHP : 0;
+      let finalHP = Math.round(hpRatio * newMaxHP);
+      // Preserve KO's cleanly — if battle HP was 0, keep 0. Else at least 1.
+      if (battleEndHP > 0) finalHP = Math.max(1, finalHP);
+      // Belt-and-braces clamp so we never write HP > max
+      finalHP = Math.min(finalHP, newMaxHP);
+      const damaged = finalHP < newMaxHP || (battleEndStatus && battleEndStatus !== 'none');
+
+      // ---- Move learning — auto-add if slots free ----
+      let newMoves = current.moves ? current.moves.slice() : null;
+      if (leveledUp && typeof LEARNSETS !== 'undefined' && LEARNSETS[p.id]) {
+        const newMoveSlugs = LEARNSETS[p.id]
+          .filter(m => m.level > oldLevel && m.level <= newLevel)
+          .map(m => m.move);
+        for (const slug of newMoveSlugs) {
+          if (!newMoves) newMoves = [];
+          if (newMoves.length >= 4) {
+            // Post-launch: queue for viewer approval. For MVP, skip.
+            console.log(`[move-learn] ${trainer}'s ${displayName(p)} could learn ${slug} but moveset is full`);
+            continue;
+          }
+          if (!newMoves.includes(slug)) {
+            newMoves.push(slug);
+            levelUpMessages.push(`${displayName(p)} learned ${slug.replace(/-/g, ' ')}!`);
+            console.log(`[move-learn] ${trainer}'s ${displayName(p)} learned ${slug}`);
+          }
+        }
+      }
+
+      // ---- Wins/losses ----
+      const winsInc   = (isWinner  && stats.participated) ? 1 : 0;
+      const lossesInc = (!isWinner && stats.participated) ? 1 : 0;
+
+      // ---- Assemble the patch ----
+      const patch = {
+        xp: newXp,
+        level: newLevel,
+        wins: (current.wins || 0) + winsInc,
+        losses: (current.losses || 0) + lossesInc,
+        currentHP: damaged ? finalHP : null,
+        status: (battleEndStatus && battleEndStatus !== 'none') ? battleEndStatus : null,
+        damagedAt: damaged ? Date.now() : null,
+        centerUntil: null,   // clear any lingering Center flag
+      };
+      // Persist moveset if it's non-empty AND differs from what's currently stored.
+      // (Previously required current.moves to exist too, which silently dropped
+      // auto-learned moves for Pokémon whose viewer hadn't customized yet.)
+      if (newMoves && newMoves.length > 0) {
+        const oldStr = JSON.stringify(current.moves || []);
+        const newStr = JSON.stringify(newMoves);
+        if (newStr !== oldStr) patch.moves = newMoves;
+      }
+
+      try {
+        const r = await fetch(url, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+        if (!r.ok) console.warn(`[writeback] PATCH failed for ${trainerKey}/${slotKey}: ${r.status}`);
+        else console.log(`[writeback] ${trainerKey}/${slotKey}: xp+${xpGained} (${oldXp}→${newXp}), lv ${oldLevel}→${newLevel}, hp ${finalHP}/${newMaxHP}, wins+${winsInc}, losses+${lossesInc}`);
+      } catch (e) {
+        console.warn(`[writeback] PATCH error for ${trainerKey}/${slotKey}:`, e);
+      }
+    }
+
+    // ---- Battle stats (leaderboard feed) ----
+    const bsUrl = `${cfg.firebaseUrl.replace(/\/$/, '')}/battle_stats/${encodeURIComponent(trainerKey)}.json`;
+    let bs = { wins: 0, losses: 0, streak: 0 };
+    try {
+      const r = await fetch(bsUrl, { cache: 'no-store' });
+      if (r.ok) bs = (await r.json()) || bs;
+    } catch (e) {}
+    const bsPatch = isWinner
+      ? { wins: (bs.wins || 0) + 1, streak: (bs.streak || 0) + 1, losses: bs.losses || 0 }
+      : { losses: (bs.losses || 0) + 1, streak: 0, wins: bs.wins || 0 };
+    try {
+      await fetch(bsUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bsPatch),
+      });
+      console.log(`[battle_stats] ${trainerKey}: wins=${bsPatch.wins} losses=${bsPatch.losses} streak=${bsPatch.streak}`);
+    } catch (e) {
+      console.warn(`[battle_stats] write failed for ${trainerKey}:`, e);
+    }
+  }
+
+  // Show level-up + move-learn messages on the winner screen if any
+  if (levelUpMessages.length > 0) {
+    const msgEl = $('winner-msg');
+    if (msgEl) {
+      const existing = msgEl.textContent;
+      msgEl.innerHTML = existing + '<br><br>' + levelUpMessages.map(m => `<span style="font-size:18px;color:#ffcb05;">🎉 ${m}</span>`).join('<br>');
+    }
+  }
+}
+
+/* ============================================================
+   INTRO + WINNER SCREENS
+   ============================================================ */
+function showIntro(trainer1, trainer2, poke1, poke2) {
+  $('intro-title').textContent = `${trainer1} vs ${trainer2}`;
+  $('intro-subtitle').textContent = `${poke1} vs ${poke2}`;
+  $('intro-banner').classList.add('show');
+}
+function hideIntro() {
+  $('intro-banner').classList.remove('show');
+}
+
+function showWinner(trainerName, pokeName) {
+  $('winner-who').textContent = trainerName;
+  $('winner-msg').textContent = pokeName
+    ? `is victorious! (${pokeName} standing)`
+    : 'is victorious!';
+  $('winner-screen').classList.add('show');
+}
+function hideWinner() {
+  $('winner-screen').classList.remove('show');
+}
+
+/* ============================================================
+   TEST HOOK — call from devtools to run a battle without Firebase / commands.
+   Example:
+     runTestBattle(
+       [{ id: 6, level: 40, moves: ['flamethrower','earthquake','slash','fly'] }],
+       [{ id: 9, level: 40 }],
+       { trainer1: 'amateurgamer', trainer2: 'jdjammer13' }
+     );
+   trainer names are optional — default to "Player 1" / "Player 2".
+   ============================================================ */
+window.runTestBattle = async function(team1, team2, opts = {}) {
+  if (typeof BattleEngine === 'undefined') {
+    console.error('battle-engine not loaded');
+    return;
+  }
+  const result = BattleEngine.simulateBattle(team1, team2);
+  console.log('[test-battle] winner:', result.winner, 'log length:', result.log.length);
+  await playLog(result, opts);
+};
+
+/* ============================================================
+   FIREBASE WATCHER — listens to /active_battle, plays live battles as they're posted.
+   Structure of /active_battle when active:
+     {
+       battleId: <unique string>,      // used to detect NEW battles vs stale reads
+       trainer1: <kick username>,       // shown in intro banner + winner screen
+       trainer2: <kick username>,
+       team1: [{id, level, moves?}, ...],
+       team2: [{id, level, moves?}, ...],
+       postedAt: <timestamp>
+     }
+   Set to null when the battle is over (or by whoever posted it, to clear).
+   For MVP, we poll every 2s. Could switch to server-sent events / websocket later.
+   ============================================================ */
+let lastPlayedBattleId = null;
+let currentlyPlaying = false;
+
+async function watchActiveBattle() {
+  if (!cfg.firebaseUrl) return;
+  try {
+    const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/, '')}/active_battle.json`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const battle = await r.json();
+    if (!battle || !battle.battleId) return;
+    if (battle.battleId === lastPlayedBattleId) return;
+    if (currentlyPlaying) return;
+    lastPlayedBattleId = battle.battleId;
+    currentlyPlaying = true;
+    try {
+      const result = BattleEngine.simulateBattle(battle.team1 || [], battle.team2 || []);
+      await playLog(result, {
+        trainer1: battle.trainer1 || 'Player 1',
+        trainer2: battle.trainer2 || 'Player 2',
+      });
+    } finally {
+      currentlyPlaying = false;
+    }
+  } catch (e) {
+    console.warn('[battle-overlay] watcher error:', e);
+  }
+}
+setInterval(watchActiveBattle, 2000);
+
+console.log('[battle-overlay] loaded — call runTestBattle(team1, team2) from devtools to test');
+</script>
+
+</body>
+</html>

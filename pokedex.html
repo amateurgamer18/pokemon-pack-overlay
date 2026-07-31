@@ -2085,6 +2085,11 @@
         <ul id="completers-list"></ul>
       </div>
     </section>
+
+    <h2 class="section-title" style="margin-top:32px"><span class="icon">⚔</span> Top Trainers <span class="hint">battle records</span></h2>
+    <section class="leaderboard">
+      <ol id="battle-leaderboard-list"><li class="lb-empty">No battles yet.</li></ol>
+    </section>
   </aside>
 </main>
 
@@ -3681,6 +3686,74 @@ function renderAchievements(stats) {
   document.getElementById('ach-count').textContent = `${unlockedCount}/${ACHIEVEMENTS.length} unlocked`;
 }
 
+/* ============================================================
+   BATTLE LEADERBOARD — reads from /battle_stats/<userkey>
+   Displays top 10 trainers by battle wins. Ties broken by streak,
+   then win rate, then losses (fewer is better).
+   ============================================================ */
+async function renderBattleLeaderboard() {
+  const lbEl = document.getElementById('battle-leaderboard-list');
+  if (!lbEl) return;
+  if (!cfg.firebaseUrl) { lbEl.innerHTML = '<li class="lb-empty">Not connected to Firebase.</li>'; return; }
+
+  let allStats = null;
+  try {
+    const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/,'')}/battle_stats.json`, { cache: 'no-store' });
+    if (r.ok) allStats = await r.json();
+  } catch (e) {
+    console.warn('[battle-leaderboard] fetch failed:', e);
+    lbEl.innerHTML = '<li class="lb-empty">Could not load battle records.</li>';
+    return;
+  }
+  if (!allStats || Object.keys(allStats).length === 0) {
+    lbEl.innerHTML = '<li class="lb-empty">No battles yet — challenge someone with <code>!battle @user</code>.</li>';
+    return;
+  }
+
+  // Also fetch collections to grab display-name casing
+  const allCols = await fetchAllCollections();
+
+  const rows = Object.entries(allStats).map(([user, s]) => {
+    const wins = s.wins || 0;
+    const losses = s.losses || 0;
+    const streak = s.streak || 0;
+    const total = wins + losses;
+    const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+    const display = (allCols && allCols[user] && allCols[user]._meta && allCols[user]._meta.displayName) || user;
+    return { user, display, wins, losses, streak, winRate, total };
+  })
+  .filter(r => r.total > 0)
+  .sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (b.streak !== a.streak) return b.streak - a.streak;
+    if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+    return a.losses - b.losses;
+  })
+  .slice(0, 10);
+
+  if (rows.length === 0) {
+    lbEl.innerHTML = '<li class="lb-empty">No battles yet — challenge someone with <code>!battle @user</code>.</li>';
+    return;
+  }
+
+  lbEl.innerHTML = rows.map((r, i) => {
+    const streakLabel = r.streak >= 3 ? ` 🔥${r.streak}` : '';
+    return `
+      <li class="rank-${i + 1}" onclick="lookupUser('${escapeHtml(r.user).replace(/'/g, '&apos;')}')" style="cursor:pointer;">
+        <span class="rank">${i + 1}</span>
+        <span class="lb-user">
+          ${escapeHtml(r.display)}${authState.logged_in && r.user === userKey(authState.user) ? '<span class="you-tag">YOU</span>' : ''}${streakLabel}
+        </span>
+        <span class="lb-stats">
+          <span class="lb-stat"><strong>${r.wins}</strong>W</span>
+          <span class="lb-stat"><strong>${r.losses}</strong>L</span>
+          <span class="lb-stat"><strong>${r.winRate}%</strong></span>
+        </span>
+      </li>
+    `;
+  }).join('');
+}
+
 async function renderLeaderboard() {
   const allCols = await fetchAllCollections();
   const completers = await fetchCompleters();
@@ -3946,8 +4019,9 @@ async function load() {
     document.getElementById('user-input').value = stored;
   }
   render();
-  // Leaderboard fetched separately and rendered after — needs ALL collections
+  // Leaderboards fetched separately and rendered after — need ALL collections
   renderLeaderboard();
+  renderBattleLeaderboard();
 }
 
 function changeUser() {
