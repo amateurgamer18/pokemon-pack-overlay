@@ -922,9 +922,14 @@ const MAX_LEVEL = 100;
 
 // XP threshold for reaching a given level (canonical Gen 1-ish curve — gentle
 // early, steep late). Lv 5 = ~566 XP total. Lv 100 = ~700k XP total.
+// XP threshold to REACH a given level. Flatter curve than the original
+// (N-1)^2.2 × 25 — that was designed for months of grinding to Lv 100.
+// Stream-paced battles need meaningful level-ups per session:
+//   Lv 2: 20     Lv 10: 540      Lv 50: 6,864
+//   Lv 6: 224    Lv 25: 2,352    Lv 100: 19,700
 function xpForLevel(level) {
   if (level <= 1) return 0;
-  return Math.floor(Math.pow(level - 1, 2.2) * 25);
+  return Math.floor(Math.pow(level - 1, 1.5) * 20);
 }
 
 // Reuse Gen 1 HP formula (same as pokedex.html's computeMaxHP)
