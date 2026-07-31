@@ -124,26 +124,52 @@ public class CPHInline
         battle["team1"] = challengerTeam;
         battle["team2"] = senderTeam;
         battle["postedAt"] = now;
+        // Queue design: /battle_queue/<battleId> = battle payload. The overlay
+        // polls the queue, processes oldest first (by postedAt), then deletes.
+        // Prevents /active_battle overwriting itself when accepts fire fast.
+        int queueDepth = 0;
+        try {
+            using (var http = new HttpClient()) {
+                http.Timeout = TimeSpan.FromSeconds(6);
+                var checkResp = http.GetAsync(FIREBASE_URL + "/battle_queue.json").GetAwaiter().GetResult();
+                if (checkResp.IsSuccessStatusCode) {
+                    string body = checkResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    if (!string.IsNullOrWhiteSpace(body) && body != "null") {
+                        var q = JObject.Parse(body);
+                        queueDepth = q.Count;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            CPH.LogWarn("[accept] queue-depth check failed: " + ex.Message);
+        }
         try {
             using (var http = new HttpClient()) {
                 http.Timeout = TimeSpan.FromSeconds(8);
-                string battleUrl = FIREBASE_URL + "/active_battle.json";
+                string battleUrl = FIREBASE_URL + "/battle_queue/" + Uri.EscapeDataString(battleId) + ".json";
                 var content = new StringContent(battle.ToString(), Encoding.UTF8, "application/json");
                 var resp = http.PutAsync(battleUrl, content).GetAwaiter().GetResult();
                 if (!resp.IsSuccessStatusCode) {
-                    CPH.LogWarn("[accept] failed to post active_battle: " + resp.StatusCode);
-                    SetReply("@" + sender + " — couldn't start the battle. Try again.");
+                    CPH.LogWarn("[accept] failed to post to battle_queue: " + resp.StatusCode);
+                    SetReply("@" + sender + " — couldn't queue the battle. Try again.");
                     return true;
                 }
             }
         } catch (Exception ex) {
-            CPH.LogWarn("[accept] post active_battle error: " + ex.Message);
+            CPH.LogWarn("[accept] post battle_queue error: " + ex.Message);
             SetReply("@" + sender + " — network hiccup, try again.");
             return true;
         }
 
         DeleteChallenge(senderKey);
-        SetReply("⚔ Battle starting! @" + challengerDisplay + " vs @" + sender + " — watch the overlay!");
+        string queueMsg;
+        if (queueDepth == 0) {
+            queueMsg = "starting now!";
+        } else {
+            int waitMin = Math.Max(1, (queueDepth * 2));   // ~2 min per battle estimate
+            queueMsg = "queued — " + queueDepth + " battle" + (queueDepth == 1 ? "" : "s") + " ahead (~" + waitMin + " min wait)";
+        }
+        SetReply("⚔ Battle " + queueMsg + " @" + challengerDisplay + " vs @" + sender);
         return true;
     }
 

@@ -1922,6 +1922,40 @@
     text-transform: uppercase;
   }
   .mp-footer .mp-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Pending-move banner (shown when moveset was full at level-up) */
+  .mp-pending-banner {
+    background: linear-gradient(180deg, rgba(255,203,5,.15) 0%, rgba(255,203,5,.05) 100%);
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .mp-pending-banner .pending-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .mp-pending-banner .pending-icon { font-size: 20px; }
+  .mp-pending-banner .pending-title {
+    font-weight: 800;
+    color: var(--gold);
+    font-size: 14px;
+    letter-spacing: .5px;
+  }
+  .mp-pending-banner .pending-hint {
+    font-size: 12px;
+    color: rgba(255,255,255,.7);
+    margin-top: 8px;
+    text-align: center;
+    font-style: italic;
+  }
+  .mp-move-row .mv-btn.replace-pending {
+    background: linear-gradient(180deg, var(--gold), var(--gold-dim));
+    color: var(--navy-dark);
+    font-weight: 800;
+  }
 </style>
 </head>
 <body>
@@ -2565,7 +2599,11 @@ function openMovesetPicker(slotKey, pokemonId, level) {
     });
     initial = last4;
   }
-  mpState = { slotKey, pokemonId, level, selected: initial.slice() };
+  mpState = {
+    slotKey, pokemonId, level,
+    selected: initial.slice(),
+    pendingMove: collEntry.pendingMove || null,
+  };
 
   const card = KANTO_CARDS.find(c => c.id === pokemonId);
   document.getElementById('mp-title').textContent =
@@ -2589,6 +2627,11 @@ function renderMoveRow(slug, ctx) {
   const color = moveTypeColor(m.type);
   if (ctx === 'selected') {
     const idx = mpState.selected.indexOf(slug);
+    // When there's a pending move waiting to be learned, show a "Replace with X"
+    // button on each existing move so the viewer can pick which one to forget.
+    const replaceBtn = mpState.pendingMove
+      ? `<button class="mv-btn replace-pending" onclick="mpReplaceWithPending('${slug}')" title="Replace with ${escapeHtml((mpState.pendingMove || '').replace(/-/g, ' '))}">Replace</button>`
+      : '';
     return `
       <div class="mp-move-row selected">
         <div class="mv-order">${idx + 1}</div>
@@ -2599,6 +2642,7 @@ function renderMoveRow(slug, ctx) {
         <div class="mp-move-priority-controls">
           <button class="mv-btn up"     onclick="mpMoveUp('${slug}')"   ${idx === 0 ? 'disabled' : ''}>↑</button>
           <button class="mv-btn down"   onclick="mpMoveDown('${slug}')" ${idx === mpState.selected.length - 1 ? 'disabled' : ''}>↓</button>
+          ${replaceBtn}
           <button class="mv-btn remove" onclick="mpRemove('${slug}')">Remove</button>
         </div>
       </div>
@@ -2633,7 +2677,37 @@ function renderMovesetPicker() {
     ? available.map(slug => renderMoveRow(slug, 'available')).join('')
     : '<div class="mp-empty-hint">All learned moves are already selected.</div>';
 
+  // Pending move banner — appears when a level-up wanted to teach a new move
+  // but the 4 slots were full. Viewer picks one existing move to replace,
+  // or dismisses to skip (Pokémon forgets the pending move).
+  let pendingHtml = '';
+  if (mpState.pendingMove && MOVES[mpState.pendingMove]) {
+    const pm = MOVES[mpState.pendingMove];
+    const displayName = mpState.pendingMove.replace(/-/g, ' ');
+    const typeColor = moveTypeColor(pm.type);
+    pendingHtml = `
+      <div class="mp-pending-banner">
+        <div class="pending-head">
+          <span class="pending-icon">📖</span>
+          <span class="pending-title">Wants to learn a new move!</span>
+        </div>
+        <div class="mp-move-row" style="border-color: var(--gold)">
+          <div class="mv-order">NEW</div>
+          <div class="mv-name" title="${escapeHtml(pm.effect || '')}">${escapeHtml(displayName)}</div>
+          <div class="mv-type" style="background:${typeColor}">${escapeHtml(pm.type)}</div>
+          <div class="mv-power">${pm.power || '—'}</div>
+          <div class="mv-pp">${pm.pp || '—'} PP</div>
+          <div class="mp-move-priority-controls">
+            <button class="mv-btn remove" onclick="mpDismissPending()">Skip</button>
+          </div>
+        </div>
+        <div class="pending-hint">Click one of your current moves below to replace it with ${escapeHtml(displayName)}.</div>
+      </div>
+    `;
+  }
+
   body.innerHTML = `
+    ${pendingHtml}
     <div class="mp-section-title">Battle moveset (priority order — top used first)</div>
     <div class="mp-current">${selectedHtml}</div>
     <div class="mp-section-title" style="margin-top:20px">Available moves (learned by Lv ${mpState.level})</div>
@@ -2641,6 +2715,25 @@ function renderMovesetPicker() {
   `;
   document.getElementById('mp-count').textContent = `${mpState.selected.length}/4 selected`;
   document.getElementById('mp-save').disabled = mpState.selected.length === 0;
+}
+
+// Replace an existing move with the pending one, clearing the pending state
+function mpReplaceWithPending(slugToRemove) {
+  if (!mpState.pendingMove) return;
+  const idx = mpState.selected.indexOf(slugToRemove);
+  if (idx === -1) return;
+  mpState.selected[idx] = mpState.pendingMove;
+  mpState.pendingMove = null;
+  renderMovesetPicker();
+}
+
+// Skip / dismiss the pending move — Pokémon forgets it
+function mpDismissPending() {
+  if (!mpState.pendingMove) return;
+  const forgotten = mpState.pendingMove;
+  mpState.pendingMove = null;
+  console.log('[moveset] dismissed pending move:', forgotten);
+  renderMovesetPicker();
 }
 
 function mpAdd(slug) {
@@ -2669,12 +2762,15 @@ async function saveMovesetPick() {
   if (mpState.selected.length === 0) return;
   const slotKey = mpState.slotKey;
   const moves = mpState.selected.slice();
-  const ok = await writeCollectionFields(slotKey, { moves });
+  // Always clear the pendingMove field on save — either the viewer accepted it
+  // (it's now in moves) or dismissed it (nulling it is the intended cleanup).
+  const patch = { moves, pendingMove: null };
+  const ok = await writeCollectionFields(slotKey, patch);
   if (!ok) {
     alert('Failed to save moves — network issue. Try again.');
     return;
   }
-  collection[slotKey] = { ...(collection[slotKey] || {}), moves };
+  collection[slotKey] = { ...(collection[slotKey] || {}), moves, pendingMove: null };
   closeMovesetPicker();
   renderTeam();
 }

@@ -355,7 +355,8 @@
     100% { transform: scale(1)  rotate(0);      opacity: 1; }
   }
 
-  /* Debug status — only shown when battle isn't active, so streamers know overlay loaded */
+  /* Debug status — hidden by default so it doesn't show on stream.
+     Toggle back on with ?debug=1 in the URL for local troubleshooting. */
   #idle {
     position: absolute;
     top: 20px; left: 20px;
@@ -366,8 +367,10 @@
     opacity: .5;
     color: white;
     z-index: 5;
+    display: none;
   }
   #idle.hidden { display: none; }
+  #idle.debug-visible:not(.hidden) { display: block; }
 </style>
 </head>
 
@@ -1036,8 +1039,9 @@ async function writeBattleResults(result, opts, winnerIdx) {
       finalHP = Math.min(finalHP, newMaxHP);
       const damaged = finalHP < newMaxHP || (battleEndStatus && battleEndStatus !== 'none');
 
-      // ---- Move learning — auto-add if slots free ----
+      // ---- Move learning — auto-add if slots free, otherwise queue as pending ----
       let newMoves = current.moves ? current.moves.slice() : null;
+      let pendingMoveToSet = null;
       if (leveledUp && typeof LEARNSETS !== 'undefined' && LEARNSETS[p.id]) {
         const newMoveSlugs = LEARNSETS[p.id]
           .filter(m => m.level > oldLevel && m.level <= newLevel)
@@ -1045,8 +1049,13 @@ async function writeBattleResults(result, opts, winnerIdx) {
         for (const slug of newMoveSlugs) {
           if (!newMoves) newMoves = [];
           if (newMoves.length >= 4) {
-            // Post-launch: queue for viewer approval. For MVP, skip.
-            console.log(`[move-learn] ${trainer}'s ${displayName(p)} could learn ${slug} but moveset is full`);
+            // Moveset full — save this as a pending move. The viewer approves
+            // (or forgets) via the pokedex Moves modal.
+            if (!newMoves.includes(slug)) {
+              pendingMoveToSet = slug;
+              levelUpMessages.push(`${displayName(p)} wants to learn ${slug.replace(/-/g, ' ')} — approve on your dex!`);
+              console.log(`[move-learn] ${trainer}'s ${displayName(p)} pending: ${slug} (moveset full — awaiting viewer approval)`);
+            }
             continue;
           }
           if (!newMoves.includes(slug)) {
@@ -1080,6 +1089,8 @@ async function writeBattleResults(result, opts, winnerIdx) {
         const newStr = JSON.stringify(newMoves);
         if (newStr !== oldStr) patch.moves = newMoves;
       }
+      // Pending move (moveset was full at level-up) — viewer approves via pokedex
+      if (pendingMoveToSet) patch.pendingMove = pendingMoveToSet;
 
       try {
         const r = await fetch(url, {
@@ -1170,32 +1181,31 @@ window.runTestBattle = async function(team1, team2, opts = {}) {
 };
 
 /* ============================================================
-   FIREBASE WATCHER — listens to /active_battle, plays live battles as they're posted.
-   Structure of /active_battle when active:
-     {
-       battleId: <unique string>,      // used to detect NEW battles vs stale reads
-       trainer1: <kick username>,       // shown in intro banner + winner screen
-       trainer2: <kick username>,
-       team1: [{id, level, moves?}, ...],
-       team2: [{id, level, moves?}, ...],
-       postedAt: <timestamp>
+   FIREBASE QUEUE WATCHER — polls /battle_queue, processes battles one at a time.
+
+   Queue structure:
+     /battle_queue/<battleId> = {
+       battleId, trainer1, trainer2, team1, team2, postedAt
      }
-   Set to null when the battle is over (or by whoever posted it, to clear).
-   For MVP, we poll every 2s. Could switch to server-sent events / websocket later.
+   Overlay picks the oldest (by postedAt), plays it, then deletes that entry.
+   Prevents overlapping battles when accepts fire in quick succession — critical
+   at launch when chat spams challenges.
    ============================================================ */
-let lastPlayedBattleId = null;
 let currentlyPlaying = false;
 
-async function watchActiveBattle() {
+async function watchBattleQueue() {
   if (!cfg.firebaseUrl) return;
+  if (currentlyPlaying) return;
   try {
-    const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/, '')}/active_battle.json`, { cache: 'no-store' });
+    const r = await fetch(`${cfg.firebaseUrl.replace(/\/$/, '')}/battle_queue.json`, { cache: 'no-store' });
     if (!r.ok) return;
-    const battle = await r.json();
-    if (!battle || !battle.battleId) return;
-    if (battle.battleId === lastPlayedBattleId) return;
-    if (currentlyPlaying) return;
-    lastPlayedBattleId = battle.battleId;
+    const queue = await r.json();
+    if (!queue) return;
+    const entries = Object.entries(queue).filter(([id, b]) => b && b.battleId);
+    if (entries.length === 0) return;
+    entries.sort((a, b) => (a[1].postedAt || 0) - (b[1].postedAt || 0));
+    const [id, battle] = entries[0];
+
     currentlyPlaying = true;
     try {
       const result = BattleEngine.simulateBattle(battle.team1 || [], battle.team2 || []);
@@ -1203,15 +1213,26 @@ async function watchActiveBattle() {
         trainer1: battle.trainer1 || 'Player 1',
         trainer2: battle.trainer2 || 'Player 2',
       });
+      // Pop this battle off the queue so it's not replayed
+      try {
+        await fetch(`${cfg.firebaseUrl.replace(/\/$/, '')}/battle_queue/${encodeURIComponent(id)}.json`, { method: 'DELETE' });
+      } catch (e) {
+        console.warn('[battle-overlay] queue-pop delete failed:', e);
+      }
     } finally {
       currentlyPlaying = false;
     }
   } catch (e) {
-    console.warn('[battle-overlay] watcher error:', e);
+    console.warn('[battle-overlay] queue watcher error:', e);
   }
 }
-setInterval(watchActiveBattle, 2000);
+setInterval(watchBattleQueue, 2000);
 
+// Show the idle status text only when ?debug=1 is in the URL, so it doesn't
+// show on stream. For local dev, add ?debug=1 to the overlay URL.
+if (new URLSearchParams(location.search).get('debug') === '1') {
+  $('idle').classList.add('debug-visible');
+}
 console.log('[battle-overlay] loaded — call runTestBattle(team1, team2) from devtools to test');
 </script>
 
