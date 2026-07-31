@@ -212,22 +212,51 @@ public class CPHInline
                 err = "has a team member (#" + id + ") that isn't in their collection anymore.";
                 return null;
             }
-            // Health checks
+            // Health checks — must compute EFFECTIVE current HP from stored fields
+            // (currentHP + damagedAt/centerUntil timestamps) using the same
+            // proportional-regen logic as pokedex.html. Otherwise we'd flag
+            // Pokémon that have naturally healed since the stored damage but
+            // whose stale currentHP field hasn't been cleared yet.
             int level = col["level"] != null ? (int)col["level"] : 5;
             int maxHP = ComputeMaxHP(id, level);
-            int currentHP = col["currentHP"] != null && col["currentHP"].Type != JTokenType.Null
-                ? (int)col["currentHP"]
-                : maxHP;
-            string status = col["status"] != null && col["status"].Type != JTokenType.Null
+            int storedHP = col["currentHP"] != null && col["currentHP"].Type != JTokenType.Null
+                ? (int)col["currentHP"] : maxHP;
+            string storedStatus = col["status"] != null && col["status"].Type != JTokenType.Null
                 ? (string)col["status"] : null;
+            long damagedAt = col["damagedAt"] != null && col["damagedAt"].Type != JTokenType.Null
+                ? (long)col["damagedAt"] : 0;
             long centerUntil = col["centerUntil"] != null && col["centerUntil"].Type != JTokenType.Null
                 ? (long)col["centerUntil"] : 0;
 
+            // At Pokémon Center — always block (even if timer expired, they're
+            // considered healing until the viewer's dex reloads or writeback runs).
             if (centerUntil > now) {
                 err = "has Pokémon at the Pokémon Center. Wait for healing to complete or swap them out.";
                 return null;
             }
-            if (currentHP < maxHP || (!string.IsNullOrEmpty(status) && status != "none")) {
+
+            // Compute effective current HP + status given elapsed natural regen
+            int effectiveHP = storedHP;
+            string effectiveStatus = storedStatus;
+            if (damagedAt > 0 && storedHP < maxHP) {
+                int missing = maxHP - storedHP;
+                double damagePct = (double)missing / maxHP;
+                long naturalMs = Math.Max(60000L, (long)(damagePct * 30 * 60 * 1000));
+                long elapsed = now - damagedAt;
+                if (elapsed >= naturalMs) {
+                    effectiveHP = maxHP;
+                    effectiveStatus = null;
+                } else {
+                    double pct = (double)elapsed / naturalMs;
+                    effectiveHP = (int)Math.Round(storedHP + (maxHP - storedHP) * pct);
+                }
+            } else if (damagedAt > 0 && !string.IsNullOrEmpty(storedStatus) && storedStatus != "none") {
+                // Status-only case (HP full but poisoned/burned) — 1 min floor
+                long elapsed = now - damagedAt;
+                if (elapsed >= 60000L) effectiveStatus = null;
+            }
+
+            if (effectiveHP < maxHP || (!string.IsNullOrEmpty(effectiveStatus) && effectiveStatus != "none")) {
                 err = "has wounded Pokémon on their team. Send them to the Pokémon Center or swap in healthy ones.";
                 return null;
             }
