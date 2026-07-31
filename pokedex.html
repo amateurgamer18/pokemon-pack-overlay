@@ -3721,8 +3721,32 @@ async function openModal(card) {
       : source === 'charity'
         ? `<span class="val" style="color:#00b140;">🎗️ ${charityText}</span>`
         : '<span class="val" style="color:#ffcb05;">📦 From a pack</span>';
+    // HP — show LIVE health if the Pokémon has been in a battle (currentHP set)
+    // or is at the Pokémon Center. Otherwise show max HP at their level.
+    // Mirrors what the team view displays so both feel consistent.
+    const level = entry?.level || 5;
+    const health = computeHealthState({ ...entry, id: card.id, level });
+    const isKO = health.currentHP <= 0;
+    const isHealing = health.atCenter;
+    const isWounded = !isKO && !isHealing && (health.currentHP < health.maxHP || health.status);
+
+    let hpLabel;
+    if (isKO) {
+      hpLabel = `<span class="val" style="color:#ee2222;">KO</span> <span style="opacity:.6;font-size:11px">(0/${health.maxHP})</span>`;
+    } else if (isHealing) {
+      hpLabel = `<span class="val" style="color:#3badd8;">🏥 ${health.currentHP}/${health.maxHP}</span> <span style="opacity:.6;font-size:11px">Center · ${formatHealTime(health.secondsRemaining)} left</span>`;
+    } else if (isWounded) {
+      const color = health.currentHP / health.maxHP < 0.25 ? '#ee2222'
+                  : health.currentHP / health.maxHP < 0.5 ? '#ffcc22' : '#4ecb4e';
+      hpLabel = `<span class="val" style="color:${color};">${health.currentHP}/${health.maxHP}</span>`;
+      if (health.status) hpLabel += ` <span class="status-badge ${health.status}" style="position:static;margin-left:4px">${health.status.slice(0,3).toUpperCase()}</span>`;
+    } else {
+      // Fully healthy — show max HP simply
+      hpLabel = `<span class="val">${health.maxHP}</span>`;
+    }
+
     statsEl.innerHTML = `
-      <div class="stat-cell"><div class="lbl">HP</div><div class="val">${card.hp}</div></div>
+      <div class="stat-cell"><div class="lbl">HP</div><div>${hpLabel}</div></div>
       <div class="stat-cell"><div class="lbl">Type</div><div class="val">${card.type}</div></div>
       <div class="stat-cell"><div class="lbl">Rarity</div>${rarityLabel}</div>
       <div class="stat-cell"><div class="lbl">Source</div>${sourceLabel}</div>
