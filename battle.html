@@ -120,6 +120,45 @@
     transition: filter .12s;
   }
 
+  /* Trainer name pill — sits above the sprite so viewers instantly know
+     whose Pokémon is on each side. Left side = challenger, right = accepter. */
+  .trainer-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,.72);
+    border: 2px solid #ffcc00;
+    border-radius: 999px;
+    padding: 6px 16px;
+    color: #ffcc00;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 0 #000;
+    box-shadow: 0 4px 10px rgba(0,0,0,.5);
+    white-space: nowrap;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Tiny CSS pokéball — red top half, black equator band, white bottom
+     half, black-ringed white button in the centre. No image asset needed. */
+  .trainer-tag::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid #000;
+    background:
+      radial-gradient(circle at 50% 50%, #fff 0 22%, #000 22% 34%, transparent 34%),
+      linear-gradient(to bottom,
+        #ee1515 0 46%,
+        #000 46% 54%,
+        #f8f8f8 54% 100%);
+    flex-shrink: 0;
+  }
+
   /* HP + name plate — pixel-y Gen 1 style, sits above the sprite in the flex column */
   .hp-plate {
     background: rgba(255,255,255,.95);
@@ -379,6 +418,7 @@
 <div id="stage">
   <div id="arena">
     <div class="combatant left" id="c-left">
+      <div class="trainer-tag" id="trainer-left">—</div>
       <div class="sprite-wrap" id="sprite-left">
         <img id="img-left" alt="" />
       </div>
@@ -395,6 +435,7 @@
       </div>
     </div>
     <div class="combatant right" id="c-right">
+      <div class="trainer-tag" id="trainer-right">—</div>
       <div class="sprite-wrap" id="sprite-right">
         <img id="img-right" alt="" />
       </div>
@@ -665,6 +706,12 @@ async function playLog(result, opts = {}) {
   live.active = [0, 0];
   live.trainer[0] = opts.trainer1 || 'Player 1';
   live.trainer[1] = opts.trainer2 || 'Player 2';
+  // Stamp trainer names onto the arena pills so mid-stream viewers can
+  // tell whose Pokémon is on each side without needing the intro card.
+  const trLeft = $('trainer-left');
+  const trRight = $('trainer-right');
+  if (trLeft) trLeft.textContent = live.trainer[0];
+  if (trRight) trRight.textContent = live.trainer[1];
 
   // Snapshot the ACTUAL final battle state per Pokémon BEFORE the reset below.
   // Writeback uses this snapshot — reading p.currentHP directly after the
@@ -811,7 +858,10 @@ async function playLog(result, opts = {}) {
         const info = findBySlot(e.target);
         if (!info) break;
         setStatusBadge(info.side, e.status);
-        const label = { poison:'poisoned', burn:'burned', paralysis:'paralyzed', sleep:'fell asleep', freeze:'was frozen', confusion:'became confused' }[e.status] || 'affected';
+        // All labels must be bare past-participle adjectives — the template
+        // already prepends "was", so anything starting with "was"/"fell"/
+        // "became" here would double up ("Charizard was was frozen!").
+        const label = { poison:'poisoned', burn:'burned', paralysis:'paralyzed', sleep:'put to sleep', freeze:'frozen', confusion:'confused' }[e.status] || 'affected';
         say(`${info.pokemon.name} was ${label}!`);
         await wait(TIMING.statusAnim);
         break;
