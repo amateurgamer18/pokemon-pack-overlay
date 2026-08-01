@@ -2440,6 +2440,43 @@ function renderCenter() {
   startHealthTicker();
 }
 
+// Lazy Firebase cleanup — scans the collection for entries whose live health
+// state computes to fully healed but whose stored Firebase state still holds
+// dirty {currentHP, damagedAt, centerUntil, status} fields. This is the mirror
+// of the visual short-circuits in computeHealthState (Center-past and
+// natural-regen-elapsed), which never wrote back. Without this cleanup, the
+// C# validator disagreed with the dex — dex renders healthy, but validator
+// reads raw Firebase and (until the matching fix in accept.cs/battle.cs)
+// computed partial-heal from a stale damagedAt and flagged as wounded.
+// Only runs for the auth'd owner of the current dex — Firebase rules reject
+// writes on other users' collections anyway.
+async function healStaleCollectionEntries() {
+  if (!canEditTeam()) return;
+  if (!collection || typeof collection !== 'object') return;
+  const patches = [];
+  for (const [slotKey, entry] of Object.entries(collection)) {
+    if (slotKey === '_meta' || !entry || typeof entry !== 'object') continue;
+    if (typeof entry.id !== 'number') continue;
+    const hasDirtyFields = entry.currentHP != null || entry.damagedAt != null ||
+                           entry.centerUntil != null || entry.status != null;
+    if (!hasDirtyFields) continue;
+    const health = computeHealthState({ ...entry, level: entry.level || 5 });
+    // Only clean if we render as fully healed AND not currently at Center.
+    const fullyHealed = !health.atCenter && health.currentHP >= health.maxHP && !health.status;
+    if (fullyHealed) patches.push(slotKey);
+  }
+  if (patches.length === 0) return;
+  for (const slotKey of patches) {
+    const cur = collection[slotKey];
+    if (!cur) continue;
+    await writeCollectionFields(slotKey, {
+      currentHP: null, damagedAt: null, centerUntil: null, status: null,
+    });
+    collection[slotKey] = { ...cur, currentHP: null, damagedAt: null, centerUntil: null, status: null };
+  }
+  console.log('[heal-cleanup] cleared stale wounded state on ' + patches.length + ' entries');
+}
+
 // Cancel Center early — captures partial heal, status doesn't clear (treatment incomplete).
 // Pokémon leaves the Center in a wounded state; viewer can re-add to team via picker.
 async function cancelCenter(slotKey) {
@@ -4107,6 +4144,9 @@ async function load() {
   // the last good data instead of blanking the dex for every viewer.
   if (coll !== null) collection = coll;
   if (team !== null) currentTeam = team;
+  // Lazy cleanup: prune stale wounded state on Firebase for the auth'd owner.
+  // Fire-and-forget — don't block render on it.
+  healStaleCollectionEntries().catch(err => console.warn('[heal-cleanup] failed', err));
   // Surface the original casing if the overlay stamped one onto the collection
   const stored = collection?._meta?.displayName;
   if (stored) {
