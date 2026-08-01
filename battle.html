@@ -791,8 +791,10 @@ async function playLog(result, opts = {}) {
         else if (e.effectiveness >= 2) floatCallout(defenderSide, 'Super Effective!', 'super');
         else if (e.effectiveness > 0 && e.effectiveness < 1) floatCallout(defenderSide, 'Not very effective…', 'weak');
         else if (e.effectiveness === 0) floatCallout(defenderSide, 'No effect…', 'weak');
-        // HP bar tick down
+        // HP bar tick down + mutate the Pokemon's tracked HP so a later switch-back
+        // shows the correct value (playback reset all Pokemon to full at start).
         updateHP(defenderSide, e.defenderHP);
+        info.pokemon.currentHP = e.defenderHP;
         await wait(TIMING.damageAnim);
         break;
       }
@@ -821,6 +823,7 @@ async function playLog(result, opts = {}) {
         briefFlash(info.side);
         floatDamage(info.side, e.damage);
         updateHP(info.side, e.currentHP);
+        info.pokemon.currentHP = e.currentHP;   // keep tracked HP in sync for switch-backs
         say(`${info.pokemon.name} was hurt by its ${e.status}!`);
         await wait(TIMING.damageAnim);
         break;

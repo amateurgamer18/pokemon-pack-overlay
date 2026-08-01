@@ -121,12 +121,18 @@ public class CPHInline
         battle["battleId"] = battleId;
         battle["trainer1"] = challengerDisplay;
         battle["trainer2"] = sender;
+        battle["trainer1Key"] = challengerKey;
+        battle["trainer2Key"] = senderKey;
         battle["team1"] = challengerTeam;
         battle["team2"] = senderTeam;
         battle["postedAt"] = now;
         // Queue design: /battle_queue/<battleId> = battle payload. The overlay
         // polls the queue, processes oldest first (by postedAt), then deletes.
         // Prevents /active_battle overwriting itself when accepts fire fast.
+        // Also scan for duplicate battles (same pair, either direction, last
+        // 60s) — protects against mutual-challenge races where A and B both
+        // typed !battle and !accept and each side ended up queueing its own
+        // copy of the same fight.
         int queueDepth = 0;
         try {
             using (var http = new HttpClient()) {
@@ -137,6 +143,29 @@ public class CPHInline
                     if (!string.IsNullOrWhiteSpace(body) && body != "null") {
                         var q = JObject.Parse(body);
                         queueDepth = q.Count;
+                        foreach (var prop in q.Properties()) {
+                            var entry = prop.Value as JObject;
+                            if (entry == null) continue;
+                            long entryPostedAt = entry["postedAt"] != null ? (long)entry["postedAt"] : 0;
+                            if (now - entryPostedAt > 60000) continue;
+                            string t1k = entry["trainer1Key"] != null ? ((string)entry["trainer1Key"] ?? "").ToLower() : "";
+                            string t2k = entry["trainer2Key"] != null ? ((string)entry["trainer2Key"] ?? "").ToLower() : "";
+                            // Legacy fallback: older queue entries may not carry
+                            // the *Key fields — compare against the display names.
+                            if (string.IsNullOrEmpty(t1k) && entry["trainer1"] != null) t1k = ((string)entry["trainer1"] ?? "").ToLower();
+                            if (string.IsNullOrEmpty(t2k) && entry["trainer2"] != null) t2k = ((string)entry["trainer2"] ?? "").ToLower();
+                            bool samePair = (t1k == senderKey && t2k == challengerKey) ||
+                                            (t1k == challengerKey && t2k == senderKey);
+                            if (samePair) {
+                                // Reciprocal accept already queued the fight —
+                                // clean up both challenges and bail without
+                                // adding a duplicate.
+                                DeleteChallenge(senderKey);
+                                DeleteChallenge(challengerKey);
+                                SetReply("⚔ @" + sender + " — battle vs @" + challengerDisplay + " is already queued.");
+                                return true;
+                            }
+                        }
                     }
                 }
             }
@@ -162,6 +191,10 @@ public class CPHInline
         }
 
         DeleteChallenge(senderKey);
+        // Also nuke any reciprocal challenge the sender had posted TO the
+        // challenger — otherwise the other side's !accept still finds a valid
+        // challenge and queues a second (duplicate) battle right after this one.
+        DeleteChallenge(challengerKey);
         string queueMsg;
         if (queueDepth == 0) {
             queueMsg = "starting now!";
@@ -262,7 +295,11 @@ public class CPHInline
                 if (elapsed >= 60000L) effectiveStatus = null;
             }
 
-            if (effectiveHP < maxHP || (!string.IsNullOrEmpty(effectiveStatus) && effectiveStatus != "none")) {
+            // ≥ 90% HP counts as ready — matches how the pokedex visually
+            // shows Pokémon (green HP bar down to 50%). Only genuinely wounded
+            // (< 90%) or statused Pokémon gate battles.
+            double hpPct = maxHP > 0 ? (double)effectiveHP / maxHP : 1.0;
+            if (hpPct < 0.90 || (!string.IsNullOrEmpty(effectiveStatus) && effectiveStatus != "none")) {
                 err = "has wounded Pokémon on their team."; return null;
             }
             var out_entry = new JObject();

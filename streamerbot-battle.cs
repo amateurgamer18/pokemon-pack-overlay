@@ -256,7 +256,12 @@ public class CPHInline
                 if (elapsed >= 60000L) effectiveStatus = null;
             }
 
-            if (effectiveHP < maxHP || (!string.IsNullOrEmpty(effectiveStatus) && effectiveStatus != "none")) {
+            // ≥ 90% HP counts as ready — lets Pokémon that are near-full still
+            // battle (they're visually shown as green on the pokedex, viewers
+            // reasonably expect they can fight). Only genuinely wounded (< 90%)
+            // or statused Pokémon gate battles.
+            double hpPct = maxHP > 0 ? (double)effectiveHP / maxHP : 1.0;
+            if (hpPct < 0.90 || (!string.IsNullOrEmpty(effectiveStatus) && effectiveStatus != "none")) {
                 err = "has wounded Pokémon on their team. Send them to the Pokémon Center or swap in healthy ones.";
                 return null;
             }
